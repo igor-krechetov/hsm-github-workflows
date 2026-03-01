@@ -1,14 +1,47 @@
 name: "Run Tests (Reusable)"
 on:
   workflow_call:
+    inputs:
+      test_script:
+        description: "Path to the shell script that runs unit tests"
+        required: true
+        type: string
+      artifact_name:
+        description: "Name of build artifact produced by build.yml"
+        required: false
+        type: string
+        default: "build-artifacts-ubuntu"
+      artifacts_dir:
+        description: "Directory where build artifacts will be downloaded"
+        required: false
+        type: string
+        default: "build"
 
 jobs:
-  update_docs:
+  unit_tests:
     name: "Unit Tests"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: Run Tests
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifacts_dir }}
+
+      - name: Run unit tests
+        shell: bash
         run: |
-          echo "RUN TESTS"
+          script_path="${{ github.workspace }}/${{ inputs.test_script }}"
+
+          if [[ ! -f "$script_path" ]]; then
+            echo "Test script not found: $script_path"
+            exit 1
+          fi
+
+          chmod +x "$script_path"
+
+          pushd "${{ inputs.artifacts_dir }}" >/dev/null
+          "$script_path"
+          popd >/dev/null
