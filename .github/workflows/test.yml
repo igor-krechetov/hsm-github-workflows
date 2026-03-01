@@ -43,6 +43,5 @@ jobs:
 
           chmod +x "$script_path"
 
-          pushd "${{ inputs.artifacts_dir }}"
+          cd "${{ inputs.artifacts_dir }}"
           "$script_path" "$repo_root"
-          popd
