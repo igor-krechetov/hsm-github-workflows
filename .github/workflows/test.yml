@@ -33,6 +33,7 @@ jobs:
       - name: Run unit tests
         shell: bash
         run: |
+          repo_root="${{ github.workspace }}"
           script_path="${{ github.workspace }}/${{ inputs.test_script }}"
 
           if [[ ! -f "$script_path" ]]; then
@@ -42,6 +43,6 @@ jobs:
 
           chmod +x "$script_path"
 
-          pushd "${{ inputs.artifacts_dir }}" >/dev/null
-          "$script_path"
-          popd >/dev/null
+          pushd "${{ inputs.artifacts_dir }}"
+          "$script_path" "$repo_root"
+          popd
