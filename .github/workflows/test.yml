@@ -19,9 +19,21 @@ on:
 
 jobs:
   unit_tests:
-    name: "Unit Tests"
+    name: "Unit Tests (Ubuntu)"
     runs-on: ubuntu-latest
     steps:
+      - name: Install Qt (Ubuntu)
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.4.*'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+          modules: ''
+          cache: 'true'
+          cache-key-prefix: 'install-qt-action-linux'
+          set-env: 'true'
+
       - uses: actions/checkout@v3
 
       - name: Download build artifacts
