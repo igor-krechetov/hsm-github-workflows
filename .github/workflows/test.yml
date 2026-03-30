@@ -2,10 +2,11 @@ name: "Run Tests (Reusable)"
 on:
   workflow_call:
     inputs:
-      test_script:
-        description: "Path to the shell script that runs unit tests"
-        required: true
+      platform:
+        description: "Platform to use for running tests. Can be one of: ubuntu"
+        required: false
         type: string
+        default: "ubuntu"
       artifact_name:
         description: "Name of build artifact produced by build.yml"
         required: false
@@ -20,8 +21,19 @@ on:
 jobs:
   unit_tests_ubuntu:
     name: "Unit Tests (Ubuntu)"
+    if: inputs.platform == 'ubuntu'
     runs-on: ubuntu-latest
     steps:
+      # Checkout artifacts
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.artifacts_dir }}
+
+      # Install dependencies
       - name: Install Qt (Ubuntu)
         uses: jurplel/install-qt-action@v4
         with:
@@ -33,20 +45,17 @@ jobs:
           cache: 'true'
           cache-key-prefix: 'install-qt-action-linux'
           set-env: 'true'
-
-      - uses: actions/checkout@v3
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Install lcov
+        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
         with:
-          name: ${{ inputs.artifact_name }}
-          path: ${{ inputs.artifacts_dir }}
+          packages: lcov
+          version: 1.0
 
+      # Run tests
       - name: Run unit tests
         shell: bash
         run: |
-          repo_root="${{ github.workspace }}"
-          script_path="${{ github.workspace }}/${{ inputs.test_script }}"
+          script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/test.sh"
 
           if [[ ! -f "$script_path" ]]; then
             echo "Test script not found: $script_path"
@@ -56,4 +65,61 @@ jobs:
           chmod +x "$script_path"
 
           cd "${{ inputs.artifacts_dir }}"
-          "$script_path" "$repo_root"
+          "$script_path" "${{ inputs.artifacts_dir }}"
+
+      - name: Collect code coverage
+        shell: bash
+        run: |
+          script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/coverage.sh"
+
+          if [[ ! -f "$script_path" ]]; then
+            echo "Test script not found: $script_path"
+            exit 1
+          fi
+
+          chmod +x "$script_path"
+
+          cd "${{ inputs.artifacts_dir }}"
+          "$script_path" "${{ inputs.artifacts_dir }}"
+
+      ## For master branch only
+      #- name: Push test coverage to Coveralls
+      #  if: ${{ github.ref_name == 'main' }}
+      #  uses: coverallsapp/github-action@master
+      #  with:
+      #    github-token: ${{ secrets.GITHUB_TOKEN }}
+      #    path-to-lcov: ${{inputs.artifacts_dir}}/coverage.info
+#
+      ## checkout artifacts branch
+      #- uses: actions/checkout@v3
+      #  if: ${{ github.ref_name == 'main' }}
+      #  with:
+      #    ref: build_artifacts
+      #    path: './build_artifacts'
+#
+      ## prepare GPG
+      #- name: Import GPG key
+      #  if: ${{ github.ref_name == 'main' }}
+      #  uses: crazy-max/ghaction-import-gpg@v5
+      #  with:
+      #    gpg_private_key: ${{ secrets.BOT_GPG_PRIVATE_KEY }}
+      #    passphrase: ${{ secrets.BOT_GPG_PASSPHRASE }}
+      #    git_config_global: true
+      #    git_user_signingkey: true
+      #    git_commit_gpgsign: true
+      #    workdir: './build_artifacts'
+
+      # Upload test artifacts
+      - name: Copy test results to artifacts folder
+        if: ${{ github.ref_name == 'main' }}
+        run: |
+          echo "DUMMY: Copy test results to artifacts folder"
+          # cp ${{github.workspace}}/build/tests_result_* ${{ env.artifacts_dir }}
+
+      # - name: Push test artifacts to branch
+      #   if: ${{ github.ref_name == 'main' }}
+      #   run: |
+      #     cd ${{ env.artifacts_dir }}
+      #     git add -A ./
+      #     git commit -S -am "[auto] build artifacts for commit ${{ github.sha }}"
+      #     git push
