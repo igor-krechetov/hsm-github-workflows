@@ -90,7 +90,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Build project (Ubuntu)
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
         with:
           platform: 'posix'
           build_type: ${{ inputs.build_type }}
@@ -121,7 +121,7 @@ jobs:
         with:
           submodules: 'recursive'
       - name: Build project (Windows)
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
         with:
           platform: 'windows'
           build_type: ${{ inputs.build_type }}

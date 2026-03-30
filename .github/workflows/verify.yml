@@ -21,7 +21,7 @@ jobs:
       commit_action: ${{ steps.get_version.outputs.commit_action }}
     steps:
       - uses: actions/checkout@v3
-      - uses: igor-krechetov/hsm-github-workflows/.github/actions/get-commit-version@main
+      - uses: igor-krechetov/hsm-github-workflows/.github/actions/get-commit-version@feature/hsmcpp-ci-integration
         id: get_version
         with:
           repo_dir: ${{ env.GITHUB_WORKSPACE }}
