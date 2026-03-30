@@ -17,11 +17,7 @@ on:
         required: false
         type: string
         default: 'Release'
-      build_glib:
-        required: false
-        type: string
-        default: 'OFF'
-      build_glibmm:
+      install_glibmm:
         required: false
         type: string
         default: 'OFF'
@@ -29,15 +25,7 @@ on:
         required: false
         type: string
         default: 'OFF'
-      build_std:
-        required: false
-        type: string
-        default: 'ON'
       build_tests:
-        required: false
-        type: string
-        default: 'OFF'
-      build_examples:
         required: false
         type: string
         default: 'OFF'
@@ -96,12 +84,9 @@ jobs:
           build_type: ${{ inputs.build_type }}
           src_dir: ${{ needs.prepare_args.outputs.src_dir }}
           build_dir: ${{ needs.prepare_args.outputs.build_dir }}
-          build_glib: ${{ inputs.build_glib }}
-          build_glibmm: ${{ inputs.build_glibmm }}
+          install_glibmm: ${{ inputs.install_glibmm }}
           install_qt: ${{ inputs.install_qt }}
-          build_std: ${{ inputs.build_std }}
           build_tests: ${{ inputs.build_tests }}
-          build_examples: ${{ inputs.build_examples }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
 
@@ -127,12 +112,9 @@ jobs:
           build_type: ${{ inputs.build_type }}
           src_dir: ${{ needs.prepare_args.outputs.src_dir }}
           build_dir: ${{ needs.prepare_args.outputs.build_dir }}
-          build_glib: ${{ inputs.build_glib }}
-          build_glibmm: ${{ inputs.build_glibmm }}
+          install_glibmm: ${{ inputs.install_glibmm }}
           install_qt: ${{ inputs.install_qt }}
-          build_std: ${{ inputs.build_std }}
           build_tests: ${{ inputs.build_tests }}
-          build_examples: ${{ inputs.build_examples }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
 
