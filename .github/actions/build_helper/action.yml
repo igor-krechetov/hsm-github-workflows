@@ -50,7 +50,8 @@ runs:
   using: "composite"
 
   steps:
-    - name: Validate platform scripts directory
+    - name: Validate platform scripts directory (Ubuntu)
+      if: ${{ inputs.platform != 'windows' }}
       shell: bash
       run: |
         scripts_dir="${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}"
@@ -58,6 +59,16 @@ runs:
           echo "Missing scripts directory: $scripts_dir"
           exit 1
         fi
+
+    - name: Validate platform scripts directory (Windows)
+      if: ${{ inputs.platform == 'windows' }}
+      shell: pwsh
+      run: |
+        $scripts_dir = "${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}"
+        if (-not (Test-Path -Path $scripts_dir -PathType Container)) {
+          Write-Host "Missing scripts directory: $scripts_dir"
+          exit 1
+        }
 
     - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
       if: ${{ (inputs.platform == 'posix') && (inputs.install_glibmm == 'ON') }}
@@ -106,7 +117,7 @@ runs:
       if: ${{ inputs.platform == 'windows' }}
       shell: cmd
       run: |
-        call "%GITHUB_ACTION_PATH%\..\..\..\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}"
+        call "${{ inputs.src_dir }}\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}"
 
     - name: Build (POSIX platforms)
       if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
