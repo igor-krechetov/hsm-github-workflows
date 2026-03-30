@@ -110,7 +110,7 @@ jobs:
         with:
           platform: 'windows'
           build_type: ${{ inputs.build_type }}
-          src_dir: ${{ needs.prepare_args.outputs.src_dir }}
+          src_dir: ${{ github.workspace }}
           build_dir: ${{ needs.prepare_args.outputs.build_dir }}
           install_glibmm: ${{ inputs.install_glibmm }}
           install_qt: ${{ inputs.install_qt }}
