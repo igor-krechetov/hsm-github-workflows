@@ -74,7 +74,7 @@ jobs:
     if: contains(needs.prepare_args.outputs.platforms_json, 'posix')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - name: Build project (Ubuntu)
@@ -132,7 +132,7 @@ jobs:
     if: contains(needs.prepare_args.outputs.platforms_json, 'platformio')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - name: Install PlatformIO
@@ -170,7 +170,7 @@ jobs:
       scxml2gen_dir: ./build/deploy/arduinoide/tools/scxml2gen
       hsmcpp_library: ./build/deploy/hsmcpp.zip
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - name: Generate hsmcpp library package
@@ -214,11 +214,11 @@ jobs:
     if: contains(needs.prepare_args.outputs.platforms_json, 'freertos')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: './source'
           submodules: 'recursive'
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           repository: 'FreeRTOS/FreeRTOS'
           ref: ${{ inputs.freertos_ref }}
