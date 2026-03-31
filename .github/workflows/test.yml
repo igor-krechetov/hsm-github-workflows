@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Checkout artifacts
-      - uses: actions/checkout@v4
+      # - uses: actions/checkout@v4
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -46,7 +46,7 @@ jobs:
           cache-key-prefix: 'install-qt-action-linux'
           set-env: 'true'
       - name: Install lcov
-        uses: awalsh128/cache-apt-pkgs-action@v1.2.2
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
           packages: lcov
           version: 1.0
@@ -91,7 +91,7 @@ jobs:
       #    path-to-lcov: ${{inputs.artifacts_dir}}/coverage.info
 #
       ## checkout artifacts branch
-      #- uses: actions/checkout@v3
+      #- uses: actions/checkout@v4
       #  if: ${{ github.ref_name == 'main' }}
       #  with:
       #    ref: build_artifacts
