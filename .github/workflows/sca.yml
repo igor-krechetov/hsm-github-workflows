@@ -74,7 +74,7 @@ jobs:
 
       - name: Run MISRA check
         run: |
-          cppcheck --addon=${{ github.workspace }}/scripts/cppcheck/misra.json \
+          cppcheck --addon=${{ github.workspace }}/scripts/sca/cppcheck/misra.json \
             --enable=warning,performance,portability,information \
             --inline-suppr \
             --xml \
