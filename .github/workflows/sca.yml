@@ -78,13 +78,13 @@ jobs:
             --enable=warning,performance,portability,information \
             --inline-suppr \
             --xml \
-            --suppressions-list=${{ github.workspace }}/scripts/cppcheck/cppcheck_suppress.txt \
+            --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
             --project=${{ github.workspace }}/${{ inputs.artifacts_dir || 'build' }}/compile_commands.json \
             -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_misra.txt
 
       - name: Validate cppcheck report
         run: |
-          ${{ github.workspace }}/scripts/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_misra.txt
+          ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_misra.txt
 
   coverity:
     name: "Coverity"
