@@ -17,6 +17,14 @@ on:
         required: false
         type: string
         default: "build"
+      install_qt:
+        required: false
+        type: string
+        default: 'OFF'
+      install_glibmm:
+        required: false
+        type: string
+        default: 'OFF'
 
 jobs:
   unit_tests_ubuntu:
@@ -37,6 +45,7 @@ jobs:
 
       # Install dependencies
       - name: Install Qt (Ubuntu)
+        if: ${{ inputs.install_qt == 'ON' }}
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.4.*'
@@ -47,6 +56,13 @@ jobs:
           cache: 'true'
           cache-key-prefix: 'install-qt-action-linux'
           set-env: 'true'
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        if: ${{ inputs.install_glibmm == 'ON' }}
+        with:
+          packages: libglibmm-2.4-dev
+          version: 1.0
+
       - name: Install lcov
         uses: awalsh128/cache-apt-pkgs-action@v1.6.0
         with:
