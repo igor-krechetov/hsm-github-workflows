@@ -83,7 +83,7 @@ jobs:
 
           chmod +x "$script_path"
           cd "$build_dir"
-          "$script_path" "$build_dir"
+          "$script_path" "$build_dir" "${{ github.workspace }}"
 
       - name: Collect code coverage
         shell: bash
