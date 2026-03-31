@@ -56,6 +56,7 @@ jobs:
         shell: bash
         run: |
           script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/test.sh"
+          build_dir="${{ github.workspace }}/${{ inputs.artifacts_dir }}"
 
           if [[ ! -f "$script_path" ]]; then
             echo "Test script not found: $script_path"
@@ -63,14 +64,14 @@ jobs:
           fi
 
           chmod +x "$script_path"
-
-          cd "${{ inputs.artifacts_dir }}"
-          "$script_path" "${{ inputs.artifacts_dir }}"
+          cd "$build_dir"
+          "$script_path" "$build_dir"
 
       - name: Collect code coverage
         shell: bash
         run: |
           script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/coverage.sh"
+          build_dir="${{ github.workspace }}/${{ inputs.artifacts_dir }}"
 
           if [[ ! -f "$script_path" ]]; then
             echo "Test script not found: $script_path"
@@ -78,9 +79,8 @@ jobs:
           fi
 
           chmod +x "$script_path"
-
-          cd "${{ inputs.artifacts_dir }}"
-          "$script_path" "${{ inputs.artifacts_dir }}"
+          cd "$build_dir"
+          "$script_path" "$build_dir"
 
       ## For master branch only
       #- name: Push test coverage to Coveralls
