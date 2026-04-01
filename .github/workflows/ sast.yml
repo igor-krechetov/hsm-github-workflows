@@ -1,4 +1,4 @@
-name: "SCA"
+name: "Static Code Analysis (Reusable)"
 
 on:
   workflow_call:
@@ -77,7 +77,6 @@ jobs:
           build_examples: 'ON'
           install_glibmm: 'ON'
           install_qt: 'ON'
-          only_configure: true
 
       - name: Run cppcheck
         run: |
