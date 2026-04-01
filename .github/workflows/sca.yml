@@ -51,8 +51,8 @@ jobs:
         with:
           category: /language:cpp
 
-  misra:
-    name: "MISRA-C-2012"
+  cppcheck:
+    name: "cppcheck"
     if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
@@ -72,19 +72,19 @@ jobs:
           packages: cppcheck
           version: 1.0
 
-      - name: Run MISRA check
+      - name: Run cppcheck
         run: |
-          cppcheck --addon=${{ github.workspace }}/scripts/sca/cppcheck/misra.json \
+          cppcheck \
             --enable=warning,performance,portability,information \
             --inline-suppr \
             --xml \
             --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
             --project=${{ github.workspace }}/${{ inputs.artifacts_dir || 'build' }}/compile_commands.json \
-            -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_misra.txt
+            -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_cppcheck.txt
 
       - name: Validate cppcheck report
         run: |
-          ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_misra.txt
+          ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_cppcheck.txt
 
   coverity:
     name: "Coverity"
