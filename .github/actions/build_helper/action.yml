@@ -111,7 +111,8 @@ runs:
           "${{ inputs.build_type }}" \
           "${{ inputs.cmake_args }}" \
           "${{ inputs.src_dir }}" \
-          "${{ inputs.build_tests }}"
+          "${{ inputs.build_tests }}" \
+          "${{ inputs.build_examples }}"
 
     - name: Configure (Windows)
       if: ${{ inputs.platform == 'windows' }}

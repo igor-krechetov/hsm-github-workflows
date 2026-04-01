@@ -60,11 +60,16 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Configure project build
+        uses: ./.github/actions/build_helper
         with:
-          name: ${{ inputs.artifact_name || 'build-artifacts-ubuntu' }}
-          path: ${{ github.workspace }}/${{ inputs.artifacts_dir || 'build' }}
+          platform: posix
+          build_type: ${{ env.BUILD_TYPE }}
+          src_dir: ${{ github.workspace }}
+          build_dir: ${{ github.workspace }}/build
+          build_tests: 'OFF'
+          build_examples: 'ON'
+          only_configure: true
 
       - name: Install cppcheck
         uses: awalsh128/cache-apt-pkgs-action@v1.6.0
@@ -79,7 +84,7 @@ jobs:
             --inline-suppr \
             --xml \
             --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
-            --project=${{ github.workspace }}/${{ inputs.artifacts_dir || 'build' }}/compile_commands.json \
+            --project=${{ github.workspace }}/build/compile_commands.json \
             -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_cppcheck.txt
 
       - name: Validate cppcheck report
@@ -125,7 +130,7 @@ jobs:
           tar -xvzf ~/download/coverity_tool.tgz
 
       - name: Configure project build
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        uses: ./.github/actions/build_helper
         with:
           platform: posix
           build_type: ${{ env.BUILD_TYPE }}
