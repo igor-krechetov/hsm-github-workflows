@@ -118,7 +118,7 @@ runs:
       if: ${{ inputs.platform == 'windows' }}
       shell: cmd
       run: |
-        call "${{ inputs.src_dir }}\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}"
+        call "${{ inputs.src_dir }}\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}" "${{ inputs.build_examples }}"
 
     - name: Build (POSIX platforms)
       if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}

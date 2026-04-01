@@ -75,6 +75,8 @@ jobs:
           build_dir: ${{ github.workspace }}/build
           build_tests: 'OFF'
           build_examples: 'ON'
+          install_glibmm: 'ON'
+          install_qt: 'ON'
           only_configure: true
 
       - name: Run cppcheck
@@ -138,6 +140,8 @@ jobs:
           build_dir: ${{ github.workspace }}/build
           build_tests: 'OFF'
           build_examples: 'ON'
+          install_glibmm: 'ON'
+          install_qt: 'ON'
           only_configure: true
 
       - name: Coverity Full Scan
