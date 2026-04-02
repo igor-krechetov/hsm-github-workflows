@@ -51,6 +51,7 @@ jobs:
         with:
           category: /language:cpp
 
+  # ==============================================
   cppcheck:
     name: "cppcheck"
     if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
@@ -78,20 +79,27 @@ jobs:
           install_glibmm: 'ON'
           install_qt: 'ON'
 
+      # - name: Run cppcheck
+      #   run: |
+      #     cppcheck \
+      #       --enable=warning,performance,portability,information \
+      #       --inline-suppr \
+      #       --xml \
+      #       --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
+      #       --project=${{ github.workspace }}/build/compile_commands.json \
+      #       -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_cppcheck.txt
       - name: Run cppcheck
-        run: |
-          cppcheck \
-            --enable=warning,performance,portability,information \
-            --inline-suppr \
-            --xml \
-            --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
-            --project=${{ github.workspace }}/build/compile_commands.json \
-            -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_cppcheck.txt
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-cppcheck@feature/hsmcpp-ci-integration
+        with:
+          compile_commands: ${{ github.workspace }}/build/compile_commands.json
+          report_path: ${{ github.workspace }}/sca_cppcheck.txt
+          qt_compat: "true"
 
-      - name: Validate cppcheck report
-        run: |
-          ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_cppcheck.txt
+      # - name: Validate cppcheck report
+      #   run: |
+      #     ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_cppcheck.txt
 
+  # ==============================================
   coverity:
     name: "Coverity"
     if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}

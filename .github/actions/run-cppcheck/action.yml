@@ -1,0 +1,87 @@
+name: "Run cppcheck"
+description: "Shared cppcheck runner for C/C++ projects"
+
+inputs:
+  compile_commands:
+    description: "Path to compile_commands.json"
+    required: true
+  report_path:
+    description: "Path to cppcheck XML stderr report"
+    required: false
+    default: "sca_cppcheck.txt"
+  enable:
+    description: "cppcheck --enable value"
+    required: false
+    default: "warning,performance,portability,information"
+  qt_compat:
+    description: "Enable Qt compatibility defines"
+    required: false
+    default: "false"
+  inline_suppr:
+    description: "Enable --inline-suppr"
+    required: false
+    default: "true"
+  extra_defines:
+    description: "Extra preprocessor defines, space-separated"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run cppcheck
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        INPUT_ENABLE: ${{ inputs.enable }}
+        INPUT_COMPILE_COMMANDS: ${{ inputs.compile_commands }}
+        INPUT_REPORT_PATH: ${{ inputs.report_path }}
+        INPUT_QT_COMPAT: ${{ inputs.qt_compat }}
+        INPUT_INLINE_SUPPR: ${{ inputs.inline_suppr }}
+        INPUT_EXTRA_DEFINES: ${{ inputs.extra_defines }}
+      run: |
+        set -euo pipefail
+
+        DEFINES=(
+          -DSTL_AVAILABLE
+          -D__GNU__=1
+          -D__LITTLE_ENDIAN__
+          -D__GNUC__
+        )
+
+        if [ "${INPUT_QT_COMPAT}" = "true" ]; then
+          DEFINES+=(
+            -Dslots=
+            -Dsignals=
+            -DQ_OBJECT=
+            -DQ_SIGNAL=
+            -DQ_SLOT=
+            -Demit=
+          )
+        fi
+
+        if [ -n "${INPUT_EXTRA_DEFINES}" ]; then
+          # shellcheck disable=SC2206
+          EXTRA_DEFINES_ARRAY=(${INPUT_EXTRA_DEFINES})
+          DEFINES+=("${EXTRA_DEFINES_ARRAY[@]}")
+        fi
+
+        CPP_CHECK_ARGS=(
+          --enable="${INPUT_ENABLE}"
+          --xml
+          --suppressions-list="${ACTION_PATH}/cppcheck_suppress.txt"
+          --project="${INPUT_COMPILE_COMMANDS}"
+        )
+
+        if [ "${INPUT_INLINE_SUPPR}" = "true" ]; then
+          CPP_CHECK_ARGS+=(--inline-suppr)
+        fi
+
+        cppcheck \
+          --include=${ACTION_PATH}/cppcheck_qt.h \
+          "${CPP_CHECK_ARGS[@]}" \
+          "${DEFINES[@]}" \
+          2> "${INPUT_REPORT_PATH}"
+
+        # Validate cppcheck report
+        ${ACTION_PATH}/cppcheck_review.py "${INPUT_REPORT_PATH}"
