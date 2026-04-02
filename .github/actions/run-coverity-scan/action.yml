@@ -1,0 +1,96 @@
+name: "Run Coverity Scan"
+description: "Configure Coverity analysis and submit scan results"
+
+inputs:
+  coverity_version:
+    description: "Coverity tool directory name under ~/coverity"
+    required: true
+  coverity_name:
+    description: "Submitter name"
+    required: true
+  coverity_project_description:
+    description: "Project description"
+    required: true
+  coverity_project:
+    description: "Coverity project name"
+    required: true
+  coverity_project_url:
+    description: "URL-encoded Coverity project identifier"
+    required: true
+  coverity_token:
+    description: "Coverity Scan token"
+    required: true
+  coverity_email:
+    description: "Email used for Coverity Scan submission"
+    required: true
+  build_command:
+    description: "Build command executed by coverity-submit.py"
+    required: true
+  git_sha:
+    description: "Commit SHA / build version"
+    required: true
+  compiler:
+    description: "Compiler for cov-configure"
+    required: false
+    default: "c++"
+  comptype:
+    description: "Compiler type for cov-configure"
+    required: false
+    default: "gcc"
+  coverity_config:
+    description: "Path to generated Coverity config XML"
+    required: false
+    default: "./coverity.xml"
+  skip_usr_include_regex:
+    description: "Regex for skipping system headers"
+    required: false
+    default: "/usr/include/.*"
+  skip_thirdparty_regex:
+    description: "Regex for skipping third-party sources"
+    required: false
+    default: ".*/thirdparty/.*"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Coverity full scan
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+        INPUT_COVERITY_VERSION: ${{ inputs.coverity_version }}
+        INPUT_COVERITY_NAME: ${{ inputs.coverity_name }}
+        INPUT_COVERITY_PROJECT_DESCRIPTION: ${{ inputs.coverity_project_description }}
+        INPUT_COVERITY_PROJECT: ${{ inputs.coverity_project }}
+        INPUT_COVERITY_PROJECT_URL: ${{ inputs.coverity_project_url }}
+        INPUT_COVERITY_TOKEN: ${{ inputs.coverity_token }}
+        INPUT_COVERITY_EMAIL: ${{ inputs.coverity_email }}
+        INPUT_BUILD_COMMAND: ${{ inputs.build_command }}
+        INPUT_GIT_SHA: ${{ inputs.git_sha }}
+        INPUT_COMPILER: ${{ inputs.compiler }}
+        INPUT_COMPTYPE: ${{ inputs.comptype }}
+        INPUT_COVERITY_CONFIG: ${{ inputs.coverity_config }}
+        INPUT_SKIP_USR_INCLUDE_REGEX: ${{ inputs.skip_usr_include_regex }}
+        INPUT_SKIP_THIRDPARTY_REGEX: ${{ inputs.skip_thirdparty_regex }}
+      run: |
+        set -euo pipefail
+
+        export PATH="$PATH:$HOME/coverity/${INPUT_COVERITY_VERSION}/bin"
+
+        cov-configure \
+          --config "${INPUT_COVERITY_CONFIG}" \
+          --template \
+          --compiler "${INPUT_COMPILER}" \
+          --comptype "${INPUT_COMPTYPE}" \
+          --xml-option=skip_file:"${INPUT_SKIP_USR_INCLUDE_REGEX}" \
+          --xml-option=skip_file:"${INPUT_SKIP_THIRDPARTY_REGEX}"
+
+        python3 "${ACTION_PATH}/coverity-submit.py" \
+          -u "${INPUT_COVERITY_NAME}" \
+          -b "${INPUT_GIT_SHA}" \
+          -config "${INPUT_COVERITY_CONFIG}" \
+          -t "${INPUT_COVERITY_PROJECT_DESCRIPTION}" \
+          -p "${INPUT_COVERITY_PROJECT}" \
+          -pu "${INPUT_COVERITY_PROJECT_URL}" \
+          -token "${INPUT_COVERITY_TOKEN}" \
+          -email "${INPUT_COVERITY_EMAIL}" \
+          -build "${INPUT_BUILD_COMMAND}"

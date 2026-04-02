@@ -79,15 +79,6 @@ jobs:
           install_glibmm: 'ON'
           install_qt: 'ON'
 
-      # - name: Run cppcheck
-      #   run: |
-      #     cppcheck \
-      #       --enable=warning,performance,portability,information \
-      #       --inline-suppr \
-      #       --xml \
-      #       --suppressions-list=${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_suppress.txt \
-      #       --project=${{ github.workspace }}/build/compile_commands.json \
-      #       -DSTL_AVAILABLE -D__GNU__=1 -D__LITTLE_ENDIAN__ -D__GNUC__ 2> ${{ github.workspace }}/sca_cppcheck.txt
       - name: Run cppcheck
         uses: igor-krechetov/hsm-github-workflows/.github/actions/run-cppcheck@feature/hsmcpp-ci-integration
         with:
@@ -95,9 +86,6 @@ jobs:
           report_path: ${{ github.workspace }}/sca_cppcheck.txt
           qt_compat: "true"
 
-      # - name: Validate cppcheck report
-      #   run: |
-      #     ${{ github.workspace }}/scripts/sca/cppcheck/cppcheck_review.py ${{ github.workspace }}/sca_cppcheck.txt
 
   # ==============================================
   coverity:
@@ -152,7 +140,14 @@ jobs:
           only_configure: true
 
       - name: Coverity Full Scan
-        run: |
-          export PATH=$PATH:~/coverity/$COVERITY_VERSION/bin/
-          cov-configure --config ./coverity.xml --template --compiler c++ --comptype gcc --xml-option=skip_file:"/usr/include/.*" --xml-option=skip_file:".*/thirdparty/.*"
-          python3 ./scripts/coverity/coverity-submit.py -u "$COVERITY_NAME" -b "${{ github.sha }}" -config ./coverity.xml -t "$COVERITY_PROJECT_DESCRIPTION" -p "$COVERITY_PROJECT" -pu "$COVERITY_PROJECT_URL" -token "${{ secrets.COVERITY_TOKEN }}" -email "${{ secrets.COVERITY_EMAIL }}" -build "$BUILDCMD"
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-coverity-scan@feature/hsmcpp-ci-integration
+        with:
+          coverity_version: ${{ env.COVERITY_VERSION }}
+          coverity_name: ${{ env.COVERITY_NAME }}
+          coverity_project_description: ${{ env.COVERITY_PROJECT_DESCRIPTION }}
+          coverity_project: ${{ env.COVERITY_PROJECT }}
+          coverity_project_url: ${{ env.COVERITY_PROJECT_URL }}
+          coverity_token: ${{ secrets.COVERITY_TOKEN }}
+          coverity_email: ${{ secrets.COVERITY_EMAIL }}
+          build_command: ${{ env.BUILDCMD }}
+          git_sha: ${{ github.sha }}
