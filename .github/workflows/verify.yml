@@ -20,7 +20,7 @@ jobs:
       commit_version: ${{ steps.get_version.outputs.commit_version }}
       commit_action: ${{ steps.get_version.outputs.commit_action }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: igor-krechetov/hsm-github-workflows/.github/actions/get-commit-version@feature/hsmcpp-ci-integration
         id: get_version
         with:
@@ -40,7 +40,7 @@ jobs:
     steps:
       # Checkout the target project
       - name: Checkout caller repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
@@ -49,7 +49,7 @@ jobs:
 
       # Checkout reusable workflow repo
       - name: Checkout scripts repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: igor-krechetov/hsm-github-workflows
           path: repoWorkflows

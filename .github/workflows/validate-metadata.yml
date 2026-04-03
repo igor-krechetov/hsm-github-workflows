@@ -8,7 +8,7 @@ on:
 
 jobs:
 #    steps:
-#      - uses: actions/checkout@v3
+#      - uses: actions/checkout@v4
 #      - name: Validate metadata
 #        if: ${{ (inputs.commit_version != '') }}
 #        run: ./scripts/validate_metadata.py ${{ inputs.commit_version }} ./
@@ -19,7 +19,7 @@ jobs:
     steps:
       # 1️⃣ Checkout the target project
       - name: Checkout caller repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ github.repository }}
           ref: ${{ github.sha }}
@@ -28,7 +28,7 @@ jobs:
 
       # 2️⃣ Checkout reusable workflow repo
       - name: Checkout scripts repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: igor-krechetov/hsm-github-workflows
           path: repoWorkflows
