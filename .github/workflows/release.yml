@@ -31,7 +31,7 @@ jobs:
     steps:
 
       # Checkout the repo (needed if scripts rely on repo content)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Determine release tag
       - name: Determine release tag

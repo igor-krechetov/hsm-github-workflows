@@ -61,11 +61,11 @@ jobs:
       target_dir: ./deploy_target
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./main
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: ${{ inputs.target_repo }}
           token: ${{ secrets.HSMCPP_BOT_TOKEN }}
@@ -132,11 +132,11 @@ jobs:
       library_dir: ./main/build/deploy/hsmcpp
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           path: ./main
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: ${{ inputs.target_repo }}
           token: ${{ secrets.HSMCPP_BOT_TOKEN }}
