@@ -104,8 +104,8 @@ jobs:
       COVERITY_NAME: 'Igor Krechetov'
       COVERITY_VERSION: 'cov-analysis-linux64-2023.6.2'
       COVERITY_PROJECT_DESCRIPTION: 'Reusable GitHub workflows for HSM projects.'
-      COVERITY_PROJECT: {{ inputs.coverity_project }}
-      COVERITY_PROJECT_URL: {{ inputs.coverity_project_url }}
+      COVERITY_PROJECT: ${{ inputs.coverity_project }}
+      COVERITY_PROJECT_URL: ${{ inputs.coverity_project_url }}
       BUILDCMD: 'cmake --build ./build --parallel 2 --config Release'
     steps:
       - uses: actions/checkout@v6
