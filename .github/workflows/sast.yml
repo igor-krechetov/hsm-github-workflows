@@ -21,6 +21,12 @@ on:
         description: "Same as coverity_project, but URL encoded. Example : igor-krechetov%2Fhsmcpp"
         required: true
         type: string
+    secrets:
+      COVERITY_TOKEN:
+        required: true
+      COVERITY_EMAIL:
+        required: true
+
   workflow_dispatch:
   push:
   pull_request:
