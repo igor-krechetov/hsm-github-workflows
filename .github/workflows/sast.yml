@@ -108,7 +108,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       COVERITY_NAME: 'Igor Krechetov'
-      COVERITY_VERSION: 'cov-analysis-linux64-2023.6.2'
       COVERITY_PROJECT_DESCRIPTION: 'Reusable GitHub workflows for HSM projects.'
       COVERITY_PROJECT: ${{ inputs.coverity_project }}
       COVERITY_PROJECT_URL: ${{ inputs.coverity_project_url }}
@@ -156,7 +155,6 @@ jobs:
       - name: Coverity Full Scan
         uses: igor-krechetov/hsm-github-workflows/.github/actions/run-coverity-scan@feature/hsmcpp-ci-integration
         with:
-          coverity_version: ${{ env.COVERITY_VERSION }}
           coverity_name: ${{ env.COVERITY_NAME }}
           coverity_project_description: ${{ env.COVERITY_PROJECT_DESCRIPTION }}
           coverity_project: ${{ env.COVERITY_PROJECT }}

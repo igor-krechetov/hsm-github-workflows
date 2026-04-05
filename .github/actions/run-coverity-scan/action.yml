@@ -2,9 +2,6 @@ name: "Run Coverity Scan"
 description: "Configure Coverity analysis and submit scan results"
 
 inputs:
-  coverity_version:
-    description: "Coverity tool directory name under ~/coverity"
-    required: true
   coverity_name:
     description: "Submitter name"
     required: true
@@ -57,7 +54,6 @@ runs:
       shell: bash
       env:
         ACTION_PATH: ${{ github.action_path }}
-        INPUT_COVERITY_VERSION: ${{ inputs.coverity_version }}
         INPUT_COVERITY_NAME: ${{ inputs.coverity_name }}
         INPUT_COVERITY_PROJECT_DESCRIPTION: ${{ inputs.coverity_project_description }}
         INPUT_COVERITY_PROJECT: ${{ inputs.coverity_project }}
@@ -74,7 +70,15 @@ runs:
       run: |
         set -euo pipefail
 
-        export PATH="$PATH:$HOME/coverity/${INPUT_COVERITY_VERSION}/bin"
+        # Resolve extracted directory (assumes single top-level folder)
+        COVERITY_DIR="$(find "$HOME/coverity" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+
+        if [ -z "$COVERITY_DIR" ]; then
+          echo "Failed to locate extracted Coverity directory"
+          exit 1
+        fi
+
+        export PATH="$PATH:$COVERITY_DIR/bin"
 
         cov-configure \
           --config "${INPUT_COVERITY_CONFIG}" \
