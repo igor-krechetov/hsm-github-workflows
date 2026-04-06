@@ -11,17 +11,15 @@ on:
       commit_action:
         required: true
         type: string
+    secrets:
+      BOT_GPG_PRIVATE_KEY:
+        required: true
+      BOT_GPG_PASSPHRASE:
+        required: true
 
-# Required Secrets
-# - BOT_GPG_PRIVATE_KEY
-# - BOT_GPG_PASSPHRASE
 
 jobs:
-  # check_version:
-  #   uses: ./.github/workflows/check-version.yml
-
   create_release_tag:
-    # needs: check_version
     if: >
       github.ref_name == 'main' &&
       inputs.commit_version != '' &&
