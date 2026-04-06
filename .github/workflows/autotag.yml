@@ -47,7 +47,7 @@ jobs:
       - name: Create git tag
         id: create_tag
         run: |
-          TAG=${{ needs.check_version.outputs.commit_version }}
+          TAG=${{ inputs.commit_version }}
           git tag $TAG ${{ inputs.commit_sha }}
           git push origin $TAG
           echo "tag_name=$TAG" >> $GITHUB_OUTPUT

@@ -36,7 +36,8 @@ jobs:
         id: tag
         run: |
           if [ -z "${{ inputs.tag_version }}" ]; then
-            TAG="v$(date +'%Y%m%d-%H%M%S')"
+            echo "ERROR: Commit tag not found"
+            exit 1
           else
             TAG="${{ inputs.tag_version }}"
           fi
