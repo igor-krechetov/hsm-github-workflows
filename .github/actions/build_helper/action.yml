@@ -72,7 +72,7 @@ runs:
 
     - name: Install dependencies (Ubuntu)
       uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-      if: ${{ (inputs.platform == 'posix') && (inputs.install_glibmm == 'ON') }}
+      if: ${{ (inputs.platform == 'posix')
       with:
         packages: libglibmm-2.4-dev patchelf libfuse2
         version: 1.0
