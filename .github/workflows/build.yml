@@ -47,8 +47,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       platforms_json: ${{ steps.parse.outputs.platforms_json }}
-      build_dir: ${{ steps.resolve_build_dir.outputs.dir }}
-      src_dir: ${{ steps.resolve_src_dir.outputs.dir }}
     steps:
       - name: Parse platforms input
         id: parse
@@ -57,16 +55,6 @@ jobs:
           json="[$(printf '"%s",' ${platforms//,/ })]"
           json="${json%,}]"
           echo "platforms_json=$json" >> $GITHUB_OUTPUT
-
-      - name: Resolve build directory
-        id: resolve_build_dir
-        run: |
-          echo "dir=${{ inputs.build_dir || format('{0}/build', github.workspace) }}" >> $GITHUB_OUTPUT
-
-      - name: Resolve src directory
-        id: resolve_src_dir
-        run: |
-          echo "dir=${{ inputs.src_dir || github.workspace }}" >> $GITHUB_OUTPUT
 
   build_project_ubuntu:
     name: "Ubuntu"
@@ -77,24 +65,34 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+
+      - name: Resolve build directory (Ubuntu)
+        id: resolve_build_dir
+        run: |
+          echo "dir=${{ inputs.build_dir || format('{0}/build', github.workspace) }}" >> $GITHUB_OUTPUT
+      - name: Resolve src directory (Ubuntu)
+        id: resolve_src_dir
+        run: |
+          echo "dir=${{ inputs.src_dir || github.workspace }}" >> $GITHUB_OUTPUT
+
       - name: Build project (Ubuntu)
         uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
         with:
           platform: 'posix'
           build_type: ${{ inputs.build_type }}
-          src_dir: ${{ needs.prepare_args.outputs.src_dir }}
-          build_dir: ${{ needs.prepare_args.outputs.build_dir }}
+          src_dir: ${{ steps.resolve_src_dir.outputs.dir }}
+          build_dir: ${{ steps.resolve_build_dir.outputs.dir }}
           install_glibmm: ${{ inputs.install_glibmm }}
           install_qt: ${{ inputs.install_qt }}
           build_tests: ${{ inputs.build_tests }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
 
-      - name: Upload artifacts
+      - name: Upload artifacts (Ubuntu)
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-ubuntu
-          path: ${{ needs.prepare_args.outputs.build_dir }}
+          path: ${{ steps.resolve_build_dir.outputs.dir }}
 
   build_project_windows:
     name: "Windows"
@@ -105,24 +103,38 @@ jobs:
       - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
+
+      - name: Resolve build directory (Windows)
+        id: resolve_build_dir
+        shell: pwsh
+        run: |
+          $dir = "${{ inputs.build_dir || format('{0}/build', github.workspace) }}"
+          echo "dir=$dir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+      - name: Resolve src directory (Windows)
+        id: resolve_src_dir
+        shell: pwsh
+        run: |
+          $dir = "${{ inputs.src_dir || github.workspace }}"
+          echo "dir=$dir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
       - name: Build project (Windows)
         uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
         with:
           platform: 'windows'
           build_type: ${{ inputs.build_type }}
-          src_dir: ${{ github.workspace }}
-          build_dir: ${{ format('{0}/build', github.workspace) }}
+          src_dir: ${{ steps.resolve_src_dir.outputs.dir }}
+          build_dir: ${{ steps.resolve_build_dir.outputs.dir }}
           install_glibmm: ${{ inputs.install_glibmm }}
           install_qt: ${{ inputs.install_qt }}
           build_tests: ${{ inputs.build_tests }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
 
-      - name: Upload artifacts
+      - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts-windows
-          path: ${{ needs.prepare_args.outputs.build_dir }}
+          path: ${{ steps.resolve_build_dir.outputs.dir }}
 
   build_platformio:
     name: "PlatformIO"

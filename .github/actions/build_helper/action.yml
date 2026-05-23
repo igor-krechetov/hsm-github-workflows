@@ -120,7 +120,7 @@ runs:
       run: |
         call "${{ inputs.src_dir }}\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}" "${{ inputs.build_examples }}"
 
-    - name: Build (POSIX platforms)
+    - name: Build (Ubuntu)
       if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
       shell: bash
       run: |
@@ -133,3 +133,27 @@ runs:
       shell: cmd
       run: |
         call "${{ inputs.src_dir }}\scripts\build\windows\build.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}"
+
+    - name: Install (Ubuntu)
+      if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
+      shell: bash
+      run: |
+        appimage_dir=~/appimage/
+        export PATH=$PATH:$appimage_dir
+        mkdir $appimage_dir
+        cd $appimage_dir
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+
+        mkdir -p "${{ inputs.build_dir }}\install"
+        ${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}/install.sh \
+          "${{ inputs.build_dir }}" \
+          "${{ inputs.build_dir }}\install" \
+
+    - name: Install (Windows)
+      if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
+      shell: cmd
+      run: |
+        call "${{ inputs.src_dir }}\scripts\build\windows\install.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_dir }}\install"
