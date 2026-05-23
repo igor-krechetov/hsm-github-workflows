@@ -141,11 +141,11 @@ runs:
         appimage_dir=~/appimage/
         export PATH=$PATH:$appimage_dir
         mkdir $appimage_dir
-        cd $appimage_dir
         wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
         wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
         wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage
         wget -P $appimage_dir https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x $appimage_dir/*
 
         mkdir -p "${{ inputs.build_dir }}\install"
         ${{ inputs.src_dir }}/scripts/install/ubuntu/install.sh \
