@@ -136,6 +136,9 @@ runs:
 
     - name: Install (Ubuntu)
       if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      with:
+        packages: patchelf libfuse2
       shell: bash
       run: |
         appimage_dir=~/appimage/
