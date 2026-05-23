@@ -70,10 +70,11 @@ runs:
           exit 1
         }
 
-    - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+    - name: Install dependencies (Ubuntu)
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.0
       if: ${{ (inputs.platform == 'posix') && (inputs.install_glibmm == 'ON') }}
       with:
-        packages: libglibmm-2.4-dev
+        packages: libglibmm-2.4-dev patchelf libfuse2
         version: 1.0
 
     - name: Install Qt (Ubuntu)
@@ -136,9 +137,6 @@ runs:
 
     - name: Install (Ubuntu)
       if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
-      uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-      with:
-        packages: patchelf libfuse2
       shell: bash
       run: |
         appimage_dir=~/appimage/
