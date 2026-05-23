@@ -148,7 +148,7 @@ runs:
         wget -P $appimage_dir https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
 
         mkdir -p "${{ inputs.build_dir }}\install"
-        ${{ inputs.src_dir }}/scripts/build/ubuntu/install.sh \
+        ${{ inputs.src_dir }}/scripts/install/ubuntu/install.sh \
           "${{ inputs.build_dir }}" \
           "${{ inputs.build_dir }}\install" \
 
@@ -156,4 +156,4 @@ runs:
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
       shell: cmd
       run: |
-        call "${{ inputs.src_dir }}\scripts\build\windows\install.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_dir }}\install"
+        call "${{ inputs.src_dir }}\scripts\install\windows\install.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_dir }}\install"
