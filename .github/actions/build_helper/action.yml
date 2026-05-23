@@ -148,7 +148,7 @@ runs:
         wget -P $appimage_dir https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
 
         mkdir -p "${{ inputs.build_dir }}\install"
-        ${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}/install.sh \
+        ${{ inputs.src_dir }}/scripts/build/ubuntu/install.sh \
           "${{ inputs.build_dir }}" \
           "${{ inputs.build_dir }}\install" \
 
