@@ -60,7 +60,7 @@ jobs:
     name: "Ubuntu"
     needs: prepare_args
     if: contains(needs.prepare_args.outputs.platforms_json, 'posix')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
         with:
