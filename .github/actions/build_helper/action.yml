@@ -131,7 +131,7 @@ runs:
 
     - name: Build (Windows)
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
-      shell: cmd
+      shell: pwsh
       run: |
         call "${{ inputs.src_dir }}\scripts\build\windows\build.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}"
 
@@ -149,12 +149,12 @@ runs:
         chmod +x $appimage_dir/*
 
         mkdir -p "${{ inputs.build_dir }}/install"
-        ${{ inputs.src_dir }}/scripts/install/ubuntu/install.sh \
+        ${{ inputs.src_dir }}/scripts/install/linux/install.sh \
           "${{ inputs.build_dir }}" \
           "${{ inputs.build_dir }}/install" \
 
     - name: Install (Windows)
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
-      shell: cmd
+      shell: pwsh
       run: |
         call "${{ inputs.src_dir }}\scripts\install\windows\install.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_dir }}\install"
