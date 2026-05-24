@@ -157,6 +157,6 @@ runs:
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
       shell: pwsh
       run: |
-        & "${{ inputs.src_dir }}\scripts\install\windows\install.cmd" `
+        & "${{ inputs.src_dir }}\scripts\install\windows\install.ps1" `
           "${{ inputs.build_dir }}" `
           "${{ inputs.build_dir }}\install"
