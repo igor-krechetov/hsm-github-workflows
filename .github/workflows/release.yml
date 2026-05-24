@@ -22,6 +22,8 @@ on:
         type: string
         default: ${{ github.workspace }}
 
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -43,31 +45,69 @@ jobs:
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      # Create GitHub release
+      # Download artifacts listed in inputs.builds into a known folder
+      - name: Download artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
+
+          for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
+            ARTIFACT=$(echo "$ARTIFACT" | xargs) # trim whitespace
+
+            echo "Downloading artifact: $ARTIFACT"
+            gh run download --name "$ARTIFACT" --dir "artifacts/$ARTIFACT"
+          done
+
+          echo "Collected files:"
+          find artifacts -type f
+
+          # Build a clean newline-separated file list for later steps
+          find artifacts -type f > artifact_files.txt
+
+          echo "Artifact file list:"
+          cat artifact_files.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create GitHub release (includes all prepared artifacts)
       - name: Create release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           body: ${{ inputs.release_description }}
+          files: |
+            artifacts/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload all artifacts from the builds list
-      - name: Upload artifacts
-        run: |
-          IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
-          for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
-            echo "Downloading artifact: $ARTIFACT"
-            # Download artifact from the same workflow run
-            gh run download --name "$ARTIFACT" --dir ./tmp
+      # # Create GitHub release
+      # - name: Create release
+      #   id: create_release
+      #   uses: softprops/action-gh-release@v3
+      #   with:
+      #     tag_name: ${{ steps.tag.outputs.tag }}
+      #     name: ${{ steps.tag.outputs.tag }}
+      #     body: ${{ inputs.release_description }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            # Assuming each artifact contains a single archive file
-            FILE=$(ls ./tmp)
-            echo "Uploading $FILE to release ${{ steps.tag.outputs.tag }}"
-            gh release upload "${{ steps.tag.outputs.tag }}" ./tmp/"$FILE" --clobber --repo ${{ github.repository }}
-            rm -rf ./tmp
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # # Upload all artifacts from the builds list
+      # - name: Upload artifacts
+      #   run: |
+      #     IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
+      #     for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
+      #       echo "Downloading artifact: $ARTIFACT"
+      #       # Download artifact from the same workflow run
+      #       gh run download --name "$ARTIFACT" --dir ./tmp
+
+      #       # Assuming each artifact contains a single archive file
+      #       FILE=$(ls ./tmp)
+      #       echo "Uploading $FILE to release ${{ steps.tag.outputs.tag }}"
+      #       gh release upload "${{ steps.tag.outputs.tag }}" ./tmp/"$FILE" --clobber --repo ${{ github.repository }}
+      #       rm -rf ./tmp
+      #     done
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
