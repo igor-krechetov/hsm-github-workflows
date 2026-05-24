@@ -131,7 +131,7 @@ runs:
 
     - name: Build (Windows)
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
-      shell: pwsh
+      shell: cmd
       run: |
         call "${{ inputs.src_dir }}\scripts\build\windows\build.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}"
 
@@ -157,4 +157,6 @@ runs:
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
       shell: pwsh
       run: |
-        call "${{ inputs.src_dir }}\scripts\install\windows\install.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_dir }}\install"
+        & "${{ inputs.src_dir }}\scripts\install\windows\install.cmd" `
+          "${{ inputs.build_dir }}" `
+          "${{ inputs.build_dir }}\install"
