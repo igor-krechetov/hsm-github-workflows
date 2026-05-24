@@ -74,6 +74,7 @@ runs:
       uses: awalsh128/cache-apt-pkgs-action@v1.6.0
       if: ${{ (inputs.platform == 'posix') }}
       with:
+        # patchelf, libfuse2 - for appimagetool
         packages: libglibmm-2.4-dev patchelf libfuse2
         version: 1.0
 

@@ -22,8 +22,8 @@ permissions:
 
 jobs:
   create_release_tag:
-# github.ref_name == 'main' &&
     if: >
+      github.ref_name == 'main' &&
       inputs.commit_version != '' &&
       inputs.commit_action == 'r'
 
