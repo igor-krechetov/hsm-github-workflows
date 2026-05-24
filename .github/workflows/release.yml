@@ -46,11 +46,14 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       # Download artifacts listed in inputs.builds into a known folder
-      - name: Download artifacts
+      - name: Download and collect install artifacts only
         shell: bash
         run: |
           set -euo pipefail
+
           mkdir -p artifacts
+          mkdir -p release_files
+
           IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
 
           for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
@@ -58,16 +61,21 @@ jobs:
 
             echo "Downloading artifact: $ARTIFACT"
             gh run download --name "$ARTIFACT" --dir "artifacts/$ARTIFACT"
+
+            INSTALL_DIR="artifacts/$ARTIFACT/install"
+
+            if [ -d "$INSTALL_DIR" ]; then
+              echo "Found install folder in $ARTIFACT"
+
+              # Copy ONLY install contents (preserve structure inside install)
+              rsync -a "$INSTALL_DIR/" "release_files/"
+            else
+              echo "No install folder in $ARTIFACT — skipping"
+            fi
           done
 
-          echo "Collected files:"
-          find artifacts -type f
-
-          # Build a clean newline-separated file list for later steps
-          find artifacts -type f > artifact_files.txt
-
-          echo "Artifact file list:"
-          cat artifact_files.txt
+          echo "Final release files:"
+          find release_files -type f
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -79,7 +87,7 @@ jobs:
           name: ${{ steps.tag.outputs.tag }}
           body: ${{ inputs.release_description }}
           files: |
-            artifacts/**
+            release_files/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
