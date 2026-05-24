@@ -17,6 +17,8 @@ on:
       BOT_GPG_PASSPHRASE:
         required: true
 
+permissions:
+  contents: write
 
 jobs:
   create_release_tag:
