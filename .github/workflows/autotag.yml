@@ -11,6 +11,10 @@ on:
       commit_action:
         required: true
         type: string
+    outputs:
+      tag_name:
+        description: "Created git tag"
+        value: ${{ jobs.create_release_tag.outputs.tag_name }}
     secrets:
       BOT_GPG_PRIVATE_KEY:
         required: true
