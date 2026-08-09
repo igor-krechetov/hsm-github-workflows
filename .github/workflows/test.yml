@@ -106,6 +106,12 @@ jobs:
           cd "$build_dir"
           "$script_path" "$build_dir" "${{ github.workspace }}"
 
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-ubuntu
+          path: "${{ github.workspace }}/${{ inputs.artifacts_dir }}"
+
       - name: Collect code coverage
         if: ${{ inputs.code_coverage == 'ON' }}
         shell: bash
