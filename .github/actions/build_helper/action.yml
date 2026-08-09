@@ -82,7 +82,7 @@ runs:
       if: ${{ (inputs.platform == 'posix') && (inputs.install_qt == 'ON') }}
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.4.*'
+        version: '6.8.*'
         host: 'linux'
         target: 'desktop'
         arch: 'gcc_64'
@@ -95,10 +95,10 @@ runs:
       if: ${{ (inputs.platform == 'windows') && (inputs.install_qt == 'ON') }}
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.4.*'
+        version: '6.8.*'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win64_msvc2022_64'
         modules: ''
         cache: 'true'
         cache-key-prefix: 'install-qt-action-win32'
