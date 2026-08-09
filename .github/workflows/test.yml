@@ -69,10 +69,10 @@ jobs:
         if: ${{ inputs.install_qt == 'ON' }}
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.4.*'
+          version: '6.8.*'
           host: 'linux'
           target: 'desktop'
-          arch: 'gcc_64'
+          arch: 'linux_gcc_64'
           modules: ''
           cache: 'true'
           cache-key-prefix: 'install-qt-action-linux'
