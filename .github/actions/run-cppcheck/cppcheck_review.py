@@ -1,12 +1,25 @@
 #!/usr/bin/python3
+import os
 import sys
 import xml.etree.ElementTree as ET
 
 
 if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: cppcheck_review.py <cppcheck_report.xml>")
+        sys.exit(2)
+
     REPORT_FILE = sys.argv[1].strip(" \n\r[]")
+    if not os.path.isfile(REPORT_FILE):
+        print(f"cppcheck: report file not found: {REPORT_FILE}")
+        sys.exit(2)
+
     print(f"{REPORT_FILE=:}")
-    tree = ET.parse(REPORT_FILE)
+    try:
+        tree = ET.parse(REPORT_FILE)
+    except ET.ParseError as ex:
+        print(f"cppcheck: invalid XML report ({ex})")
+        sys.exit(2)
 
     if tree:
         root = tree.getroot()

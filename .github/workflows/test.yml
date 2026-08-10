@@ -2,10 +2,11 @@ name: "Run Tests (Reusable)"
 on:
   workflow_call:
     inputs:
-      test_script:
-        description: "Path to the shell script that runs unit tests"
-        required: true
+      platform:
+        description: "Platform to use for running tests. Can be one of: ubuntu"
+        required: false
         type: string
+        default: "ubuntu"
       artifact_name:
         description: "Name of build artifact produced by build.yml"
         required: false
@@ -16,25 +17,46 @@ on:
         required: false
         type: string
         default: "build"
+      install_qt:
+        required: false
+        type: string
+        default: 'OFF'
+      install_glibmm:
+        required: false
+        type: string
+        default: 'OFF'
+      code_coverage:
+        description: "Enable/disable collection of code coverage"
+        required: false
+        type: string
+        default: 'ON'
+      upload_test_badges:
+        description: "Enable/disable uploading of test badges"
+        required: false
+        type: string
+        default: 'ON'
+      test_badges_path:
+        description: "Path to test badges to upload"
+        required: false
+        type: string
+        default: 'tests_result_*'
 
 jobs:
   unit_tests_ubuntu:
     name: "Unit Tests (Ubuntu)"
+    if: inputs.platform == 'ubuntu'
     runs-on: ubuntu-latest
-    steps:
-      - name: Install Qt (Ubuntu)
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.4.*'
-          host: 'linux'
-          target: 'desktop'
-          arch: 'gcc_64'
-          modules: ''
-          cache: 'true'
-          cache-key-prefix: 'install-qt-action-linux'
-          set-env: 'true'
 
-      - uses: actions/checkout@v3
+    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    steps:
+      # Checkout artifacts
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
@@ -42,11 +64,38 @@ jobs:
           name: ${{ inputs.artifact_name }}
           path: ${{ inputs.artifacts_dir }}
 
+      # Install dependencies
+      - name: Install Qt (Ubuntu)
+        if: ${{ inputs.install_qt == 'ON' }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: ''
+          cache: 'true'
+          cache-key-prefix: 'install-qt-action-linux'
+          set-env: 'true'
+
+      - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        if: ${{ inputs.install_glibmm == 'ON' }}
+        with:
+          packages: libglibmm-2.4-dev
+          version: 1.0
+
+      - name: Install lcov
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        with:
+          packages: lcov
+          version: 1.0
+
+      # Run tests
       - name: Run unit tests
         shell: bash
         run: |
-          repo_root="${{ github.workspace }}"
-          script_path="${{ github.workspace }}/${{ inputs.test_script }}"
+          script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/test.sh"
+          build_dir="${{ github.workspace }}/${{ inputs.artifacts_dir }}"
 
           if [[ ! -f "$script_path" ]]; then
             echo "Test script not found: $script_path"
@@ -54,6 +103,52 @@ jobs:
           fi
 
           chmod +x "$script_path"
+          cd "$build_dir"
+          "$script_path" "$build_dir" "${{ github.workspace }}"
 
-          cd "${{ inputs.artifacts_dir }}"
-          "$script_path" "$repo_root"
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-artifacts-ubuntu
+          path: "${{ github.workspace }}/${{ inputs.artifacts_dir }}"
+
+      - name: Collect code coverage
+        if: ${{ inputs.code_coverage == 'ON' }}
+        shell: bash
+        run: |
+          script_path="${{ github.workspace }}/scripts/test/${{ inputs.platform }}/coverage.sh"
+          build_dir="${{ github.workspace }}/${{ inputs.artifacts_dir }}"
+
+          if [[ ! -f "$script_path" ]]; then
+            echo "Test script not found: $script_path"
+            exit 1
+          fi
+
+          chmod +x "$script_path"
+          cd "$build_dir"
+          "$script_path" "$build_dir"
+
+      # For master branch only
+      - name: Push test coverage to Coveralls
+        if: ${{ inputs.code_coverage == 'ON' && github.ref_name == 'main' }}
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: ${{inputs.artifacts_dir}}/coverage.info
+
+
+      - name: Publish badge artifact for Pages
+        if: ${{ inputs.upload_test_badges == 'ON' && github.ref_name == 'main' }}
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/publish-pages-badges@feature/hsmcpp-ci-integration
+        with:
+          source_dir: ${{ github.workspace }}/build
+          file_glob: ${{ github.test_badges_path }}
+          pages_dir: pages
+          badges_subdir: badges
+          index_title: "hsmcpp badges"
+
+      - name: Deploy badges to GitHub Pages
+        if: ${{ inputs.upload_test_badges == 'ON' && github.ref_name == 'main' }}
+        id: deployment
+        uses: actions/deploy-pages@v4

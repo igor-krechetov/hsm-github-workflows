@@ -1,0 +1,163 @@
+name: "Static Code Analysis (Reusable)"
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        description: "Name of build artifact produced by build.yml"
+        required: false
+        type: string
+        default: "build-artifacts-ubuntu"
+      artifacts_dir:
+        description: "Directory where build artifacts will be downloaded"
+        required: false
+        type: string
+        default: "build"
+      coverity_project:
+        description: "Project name as registered with Coverity. Example : igor-krechetov/hsmcpp"
+        required: true
+        type: string
+      coverity_project_url:
+        description: "Same as coverity_project, but URL encoded. Example : igor-krechetov%2Fhsmcpp"
+        required: true
+        type: string
+    secrets:
+      COVERITY_TOKEN:
+        required: true
+      COVERITY_EMAIL:
+        required: true
+
+
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  codeql:
+    name: "CodeQL"
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name || 'build-artifacts-ubuntu' }}
+          path: ${{ github.workspace }}/${{ inputs.artifacts_dir || 'build' }}
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+          build-mode: none
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:cpp
+
+  # ==============================================
+  cppcheck:
+    name: "cppcheck"
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - name: Install cppcheck
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        with:
+          packages: cppcheck
+          version: 1.0
+
+      - name: Configure project build
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        with:
+          platform: posix
+          build_type: ${{ env.BUILD_TYPE }}
+          src_dir: ${{ github.workspace }}
+          build_dir: ${{ github.workspace }}/build
+          build_tests: 'OFF'
+          build_examples: 'ON'
+          install_glibmm: 'ON'
+          install_qt: 'ON'
+
+      - name: Run cppcheck
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-cppcheck@feature/hsmcpp-ci-integration
+        with:
+          compile_commands: ${{ github.workspace }}/build/compile_commands.json
+          report_path: ${{ github.workspace }}/sca_cppcheck.txt
+          qt_compat: "true"
+
+
+  # ==============================================
+  coverity:
+    name: "Coverity"
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    env:
+      COVERITY_NAME: 'Igor Krechetov'
+      COVERITY_PROJECT_DESCRIPTION: 'Reusable GitHub workflows for HSM projects.'
+      COVERITY_PROJECT: ${{ inputs.coverity_project }}
+      COVERITY_PROJECT_URL: ${{ inputs.coverity_project_url }}
+      BUILDCMD: 'cmake --build ./build --parallel 2 --config Release'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: '11'
+
+      - name: Cache Coverity
+        id: cache-coverity
+        uses: actions/cache@v4
+        with:
+          path: ~/coverity
+          key: coverity-tool
+          restore-keys: coverity-tool
+
+      - name: Coverity Download & Install
+        if: ${{ steps.cache-coverity.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir -p ~/download
+          mkdir -p ~/coverity
+          wget https://scan.coverity.com/download/linux64 --post-data "token=${{ secrets.COVERITY_TOKEN }}&project=$COVERITY_PROJECT_URL" -O ~/download/coverity_tool.tgz
+          cd ~/coverity
+          tar -xvzf ~/download/coverity_tool.tgz
+
+      - name: Configure project build
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        with:
+          platform: posix
+          build_type: ${{ env.BUILD_TYPE }}
+          src_dir: ${{ github.workspace }}
+          build_dir: ${{ github.workspace }}/build
+          build_tests: 'OFF'
+          build_examples: 'ON'
+          install_glibmm: 'ON'
+          install_qt: 'ON'
+          only_configure: true
+
+      - name: Coverity Full Scan
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-coverity-scan@feature/hsmcpp-ci-integration
+        with:
+          coverity_name: ${{ env.COVERITY_NAME }}
+          coverity_project_description: ${{ env.COVERITY_PROJECT_DESCRIPTION }}
+          coverity_project: ${{ env.COVERITY_PROJECT }}
+          coverity_project_url: ${{ env.COVERITY_PROJECT_URL }}
+          coverity_token: ${{ secrets.COVERITY_TOKEN }}
+          coverity_email: ${{ secrets.COVERITY_EMAIL }}
+          build_command: ${{ env.BUILDCMD }}
+          git_sha: ${{ github.sha }}

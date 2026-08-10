@@ -7,7 +7,7 @@ on:
         required: true
         type: string
       tag_version:
-        required: false
+        required: true
         type: string
       builds:
         description: "Comma-separated list of artifact names to release"
@@ -22,8 +22,8 @@ on:
         type: string
         default: ${{ github.workspace }}
 
-# Secrets:
-# - GITHUB_TOKEN
+permissions:
+  contents: write
 
 jobs:
   release:
@@ -31,44 +31,91 @@ jobs:
     steps:
 
       # Checkout the repo (needed if scripts rely on repo content)
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Determine release tag
       - name: Determine release tag
         id: tag
         run: |
           if [ -z "${{ inputs.tag_version }}" ]; then
-            TAG="v$(date +'%Y%m%d-%H%M%S')"
+            echo "ERROR: Commit tag not found"
+            exit 1
           else
             TAG="${{ inputs.tag_version }}"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      # Create GitHub release
+      # Download artifacts listed in inputs.builds into a known folder
+      - name: Download and collect install artifacts only
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p artifacts
+          mkdir -p release_files
+
+          IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
+
+          for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
+            ARTIFACT=$(echo "$ARTIFACT" | xargs) # trim whitespace
+
+            echo "Downloading artifact: $ARTIFACT"
+            gh run download --name "$ARTIFACT" --dir "artifacts/$ARTIFACT"
+
+            INSTALL_DIR="artifacts/$ARTIFACT/install"
+
+            if [ -d "$INSTALL_DIR" ]; then
+              echo "Found install folder in $ARTIFACT"
+
+              # Copy ONLY install contents (preserve structure inside install)
+              rsync -a "$INSTALL_DIR/" "release_files/"
+            else
+              echo "No install folder in $ARTIFACT — skipping"
+            fi
+          done
+
+          echo "Final release files:"
+          find release_files -type f
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Create GitHub release (includes all prepared artifacts)
       - name: Create release
-        id: create_release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
           body: ${{ inputs.release_description }}
+          files: |
+            release_files/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Upload all artifacts from the builds list
-      - name: Upload artifacts
-        run: |
-          IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
-          for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
-            echo "Downloading artifact: $ARTIFACT"
-            # Download artifact from the same workflow run
-            gh run download --name "$ARTIFACT" --dir ./tmp
+      # # Create GitHub release
+      # - name: Create release
+      #   id: create_release
+      #   uses: softprops/action-gh-release@v3
+      #   with:
+      #     tag_name: ${{ steps.tag.outputs.tag }}
+      #     name: ${{ steps.tag.outputs.tag }}
+      #     body: ${{ inputs.release_description }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            # Assuming each artifact contains a single archive file
-            FILE=$(ls ./tmp)
-            echo "Uploading $FILE to release ${{ steps.tag.outputs.tag }}"
-            gh release upload "${{ steps.tag.outputs.tag }}" ./tmp/"$FILE" --clobber --repo ${{ github.repository }}
-            rm -rf ./tmp
-          done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # # Upload all artifacts from the builds list
+      # - name: Upload artifacts
+      #   run: |
+      #     IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
+      #     for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
+      #       echo "Downloading artifact: $ARTIFACT"
+      #       # Download artifact from the same workflow run
+      #       gh run download --name "$ARTIFACT" --dir ./tmp
+
+      #       # Assuming each artifact contains a single archive file
+      #       FILE=$(ls ./tmp)
+      #       echo "Uploading $FILE to release ${{ steps.tag.outputs.tag }}"
+      #       gh release upload "${{ steps.tag.outputs.tag }}" ./tmp/"$FILE" --clobber --repo ${{ github.repository }}
+      #       rm -rf ./tmp
+      #     done
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

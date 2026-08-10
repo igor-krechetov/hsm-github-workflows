@@ -1,0 +1,73 @@
+name: "Publish Pages badges artifact"
+description: "Collect generated badge files into a GitHub Pages artifact"
+
+inputs:
+  source_dir:
+    description: "Directory containing generated badge files"
+    required: true
+  file_glob:
+    description: "Shell glob for badge files relative to source_dir"
+    required: true
+    default: "tests_result_*"
+  pages_dir:
+    description: "Temporary Pages site directory to assemble"
+    required: false
+    default: "pages"
+  badges_subdir:
+    description: "Subdirectory under the Pages root where badges will be stored"
+    required: false
+    default: "badges"
+  index_title:
+    description: "Title for generated index.html"
+    required: false
+    default: "Badges"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Assemble Pages content
+      shell: bash
+      env:
+        INPUT_SOURCE_DIR: ${{ inputs.source_dir }}
+        INPUT_FILE_GLOB: ${{ inputs.file_glob }}
+        INPUT_PAGES_DIR: ${{ inputs.pages_dir }}
+        INPUT_BADGES_SUBDIR: ${{ inputs.badges_subdir }}
+        INPUT_INDEX_TITLE: ${{ inputs.index_title }}
+      run: |
+        set -euo pipefail
+
+        rm -rf "${INPUT_PAGES_DIR}"
+        mkdir -p "${INPUT_PAGES_DIR}/${INPUT_BADGES_SUBDIR}"
+
+        shopt -s nullglob
+        files=( "${INPUT_SOURCE_DIR}"/${INPUT_FILE_GLOB} )
+        shopt -u nullglob
+
+        if [ ${#files[@]} -eq 0 ]; then
+          echo "No badge files matched: ${INPUT_SOURCE_DIR}/${INPUT_FILE_GLOB}"
+          exit 1
+        fi
+
+        cp "${files[@]}" "${INPUT_PAGES_DIR}/${INPUT_BADGES_SUBDIR}/"
+
+        cat > "${INPUT_PAGES_DIR}/index.html" <<EOF
+        <!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>${INPUT_INDEX_TITLE}</title>
+          </head>
+          <body>
+            <h1>${INPUT_INDEX_TITLE}</h1>
+            <p>Static badge host.</p>
+          </body>
+        </html>
+        EOF
+
+        touch "${INPUT_PAGES_DIR}/.nojekyll"
+
+    - name: Upload Pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ${{ inputs.pages_dir }}

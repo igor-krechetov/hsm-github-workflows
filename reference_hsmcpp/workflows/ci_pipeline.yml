@@ -1,0 +1,78 @@
+name: "CI/CD"
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches: [ main, dev ]
+
+jobs:
+  verify:
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'dev'))
+    uses: igor-krechetov/hsm-github-workflows/.github/workflows/verify.yml@feature/hsmcpp-ci-integration
+
+  build:
+    needs: verify
+    uses: igor-krechetov/hsm-github-workflows/.github/workflows/build.yml@feature/hsmcpp-ci-integration
+    if: >
+      always() &&
+      (needs.verify.result == 'success' || needs.verify.result == 'skipped')
+    with:
+      build_type: Release
+      # platforms: "posix,windows,platformio,arduinoide,freertos"
+      platforms: "posix"
+      install_qt: 'ON'
+      install_glibmm: 'ON'
+      build_tests: 'ON'
+
+  test:
+    needs: build
+    uses: igor-krechetov/hsm-github-workflows/.github/workflows/test.yml@feature/hsmcpp-ci-integration
+    if: always() && (needs.build.result == 'success')
+    with:
+      platform: 'ubuntu'
+      install_qt: 'ON'
+      install_glibmm: 'ON'
+
+  sca:
+    needs: test
+    # uses: igor-krechetov/hsm-github-workflows/.github/workflows/test.yml@feature/hsmcpp-ci-integration
+    if: always() && (needs.test.result == 'success')
+    runs-on: ubuntu-latest
+    # with:
+    #   test_script: "validate.sh"
+    steps:
+      - name: DUMMY
+        run: echo "Static Code Analises 3"
+
+  update_documentation:
+    needs: [verify, test, sca]
+    if: >
+      github.event_name == 'push' &&
+      github.ref_name == 'main' &&
+      needs.verify.result == 'success' &&
+      needs.test.result == 'success'
+    uses: igor-krechetov/hsm-github-workflows/.github/workflows/update-docs.yml@feature/hsmcpp-ci-integration
+
+  release:
+    needs: [verify, update_documentation]
+    if: >
+      github.event_name == 'push' &&
+      github.ref_name == 'main' &&
+      needs.verify.outputs.commit_action == 'r' &&
+      needs.verify.result == 'success' &&
+      needs.update_documentation.result == 'success'
+    uses: igor-krechetov/hsm-github-workflows/.github/workflows/release.yml@feature/hsmcpp-ci-integration
+    with:
+      commit_sha: ${{ github.sha }}
+      tag_version: ${{ needs.update_documentation.outputs.tag_name }}
+      builds: "build-artifacts-ubuntu,build-artifacts-windows"
+      release_description: |
+        Release ${{ needs.update_documentation.outputs.tag_name }}
+
+        - Built on Ubuntu and Windows
+        - Includes binaries for both platforms

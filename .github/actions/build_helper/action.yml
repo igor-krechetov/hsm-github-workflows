@@ -1,7 +1,7 @@
 name: "Build Helper"
 
 inputs:
-  # values: posix, windows
+  # values: posix, windows, platformio, arduino, freertos
   platform:
     required: true
     type: string
@@ -17,22 +17,14 @@ inputs:
     required: false
     type: string
     default: 'Release'
-  build_glib:
+  install_glibmm:
     required: false
     type: string
     default: 'OFF'
-  build_glibmm:
+  install_qt:
     required: false
     type: string
     default: 'OFF'
-  build_qt:
-    required: false
-    type: string
-    default: 'OFF'
-  build_std:
-    required: false
-    type: string
-    default: 'ON'
   build_tests:
     required: false
     type: string
@@ -58,82 +50,114 @@ runs:
   using: "composite"
 
   steps:
-    # --------------------------------- Ubuntu build ---------------------------------
-    - uses: awalsh128/cache-apt-pkgs-action@v1.6.0
-      if: ${{ (inputs.platform == 'posix') && ((inputs.build_glib == 'ON') || (inputs.build_glibmm == 'ON')) }}
+    - name: Validate platform scripts directory (Ubuntu)
+      if: ${{ inputs.platform != 'windows' }}
+      shell: bash
+      run: |
+        scripts_dir="${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}"
+        if [ ! -d "$scripts_dir" ]; then
+          echo "Missing scripts directory: $scripts_dir"
+          exit 1
+        fi
+
+    - name: Validate platform scripts directory (Windows)
+      if: ${{ inputs.platform == 'windows' }}
+      shell: pwsh
+      run: |
+        $scripts_dir = "${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}"
+        if (-not (Test-Path -Path $scripts_dir -PathType Container)) {
+          Write-Host "Missing scripts directory: $scripts_dir"
+          exit 1
+        }
+
+    - name: Install dependencies (Ubuntu)
+      uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+      if: ${{ (inputs.platform == 'posix') }}
       with:
-        packages: libglibmm-2.4-dev
+        # patchelf, libfuse2 - for appimagetool
+        packages: libglibmm-2.4-dev patchelf libfuse2
         version: 1.0
 
     - name: Install Qt (Ubuntu)
-      if: ${{ (inputs.platform == 'posix') && (inputs.build_qt == 'ON') }}
+      if: ${{ (inputs.platform == 'posix') && (inputs.install_qt == 'ON') }}
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.4.*'
+        version: '6.8.*'
         host: 'linux'
         target: 'desktop'
-        arch: 'gcc_64'
+        arch: 'linux_gcc_64'
         modules: ''
         cache: 'true'
         cache-key-prefix: 'install-qt-action-linux'
         set-env: 'true'
 
-    #     -DHSMBUILD_VERBOSE=OFF \
-    # -DHSMBUILD_PLATFORM=${{ inputs.platform }} \
-    # -DHSMBUILD_DISPATCHER_GLIB=${{ inputs.build_glib }} \
-    # -DHSMBUILD_DISPATCHER_GLIBMM=${{ inputs.build_glibmm }} \
-    # -DHSMBUILD_DISPATCHER_STD=${{ inputs.build_std }} \
-    # -DHSMBUILD_DISPATCHER_QT=${{ inputs.build_qt }} \
-    # -DHSMBUILD_TESTS=${{ inputs.build_tests }} \
-    # -DHSMBUILD_EXAMPLES=${{ inputs.build_examples }} \
-    # -DHSMBUILD_CODECOVERAGE=${{ inputs.codecoverage }} \
-    # -DHSMBUILD_DEBUGGING=ON \
-
-    - name: Configure CMake (Ubuntu)
-      if: ${{ inputs.platform == 'posix' }}
-      shell: bash
-      run: |
-        cmake -B ${{ inputs.build_dir }} -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} \
-          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-          ${{ inputs.cmake_args }} \
-          ${{ inputs.src_dir }}
-
-    - name: Build (Ubuntu)
-      if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
-      shell: bash
-      run: cmake --build ${{ inputs.build_dir }} --parallel 2 --config ${{ inputs.build_type }}
-
-    # --------------------------------- Windows build ---------------------------------
     - name: Install Qt (Windows)
-      if: ${{ (inputs.platform == 'windows') && (inputs.build_qt == 'ON') }}
+      if: ${{ (inputs.platform == 'windows') && (inputs.install_qt == 'ON') }}
       uses: jurplel/install-qt-action@v4
       with:
-        version: '6.4.*'
+        version: '6.8.*'
         host: 'windows'
         target: 'desktop'
-        arch: 'win64_msvc2019_64'
+        arch: 'win64_msvc2022_64'
         modules: ''
         cache: 'true'
         cache-key-prefix: 'install-qt-action-win32'
         set-env: 'true'
 
-    # -DHSMBUILD_VERBOSE=OFF ^
-    # -DHSMBUILD_PLATFORM=${{ inputs.platform }} ^
-    # -DHSMBUILD_DISPATCHER_GLIB=OFF ^
-    # -DHSMBUILD_DISPATCHER_GLIBMM=OFF ^
-    # -DHSMBUILD_DISPATCHER_STD=ON ^
-    # -DHSMBUILD_DISPATCHER_QT=ON ^
-    # -DHSMBUILD_TESTS=ON ^
-    # -DHSMBUILD_EXAMPLES=ON ^
-    # -DHSMBUILD_DEBUGGING=ON ^
-    - name: Configure CMake (Windows)
+    - name: Configure (POSIX platforms)
+      if: ${{ inputs.platform == 'posix' }}
+      shell: bash
+      run: |
+        ${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}/configure.sh \
+          "${{ inputs.build_dir }}" \
+          "${{ inputs.build_type }}" \
+          "${{ inputs.cmake_args }}" \
+          "${{ inputs.src_dir }}" \
+          "${{ inputs.build_tests }}" \
+          "${{ inputs.build_examples }}"
+
+    - name: Configure (Windows)
       if: ${{ inputs.platform == 'windows' }}
       shell: cmd
-      run: cmake -B ${{github.workspace}}\build -DCMAKE_BUILD_TYPE=${{ inputs.build_type }} ^
-            ${{ inputs.cmake_args }} ^
-            ${{ inputs.src_dir }}
+      run: |
+        call "${{ inputs.src_dir }}\scripts\build\windows\configure.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}" "${{ inputs.cmake_args }}" "${{ inputs.src_dir }}" "${{ inputs.build_tests }}" "${{ inputs.build_examples }}"
+
+    - name: Build (Ubuntu)
+      if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
+      shell: bash
+      run: |
+        ${{ inputs.src_dir }}/scripts/build/${{ inputs.platform }}/build.sh \
+          "${{ inputs.build_dir }}" \
+          "${{ inputs.build_type }}"
 
     - name: Build (Windows)
       if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
       shell: cmd
-      run: cmake --build ${{github.workspace}}\build --parallel 2 --config ${{ inputs.build_type }}
+      run: |
+        call "${{ inputs.src_dir }}\scripts\build\windows\build.cmd" "${{ inputs.build_dir }}" "${{ inputs.build_type }}"
+
+    - name: Install (Ubuntu)
+      if: ${{ (inputs.platform == 'posix') && (inputs.only_configure == 'false') }}
+      shell: bash
+      run: |
+        appimage_dir=~/appimage/
+        export PATH=$PATH:$appimage_dir
+        mkdir $appimage_dir
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage
+        wget -P $appimage_dir https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x $appimage_dir/*
+
+        mkdir -p "${{ inputs.build_dir }}/install"
+        ${{ inputs.src_dir }}/scripts/install/linux/install.sh \
+          "${{ inputs.build_dir }}" \
+          "${{ inputs.build_dir }}/install" \
+
+    - name: Install (Windows)
+      if: ${{ (inputs.platform == 'windows') && (inputs.only_configure == 'false') }}
+      shell: pwsh
+      run: |
+        & "${{ inputs.src_dir }}\scripts\install\windows\install.ps1" `
+          "${{ inputs.build_dir }}" `
+          "${{ inputs.build_dir }}\install"
