@@ -27,9 +27,7 @@ on:
       COVERITY_EMAIL:
         required: true
 
-  workflow_dispatch:
-  push:
-  pull_request:
+
 
 env:
   BUILD_TYPE: Release
