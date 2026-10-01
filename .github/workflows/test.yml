@@ -45,7 +45,12 @@ jobs:
   unit_tests_ubuntu:
     name: "Unit Tests (Ubuntu)"
     if: inputs.platform == 'ubuntu'
-    runs-on: ubuntu-latest
+    # Must match the runner image used by build.yml's build_project_ubuntu job
+    # (ubuntu-22.04 / GCC 11). Coverage capture reads the .gcno/.gcda produced by
+    # the build job; if gcov here is a different GCC major version, lcov aborts
+    # with "Incompatible GCC/GCOV version found" (e.g. built 'B14*' vs gcov
+    # 'B33*'). Keeping both jobs on the same image keeps the gcov format aligned.
+    runs-on: ubuntu-22.04
 
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
@@ -132,7 +137,7 @@ jobs:
       # For master branch only
       - name: Push test coverage to Coveralls
         if: ${{ inputs.code_coverage == 'ON' && github.ref_name == 'main' }}
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@main
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: ${{inputs.artifacts_dir}}/coverage.info
@@ -140,7 +145,7 @@ jobs:
 
       - name: Publish badge artifact for Pages
         if: ${{ inputs.upload_test_badges == 'ON' && github.ref_name == 'main' }}
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/publish-pages-badges@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/publish-pages-badges@main
         with:
           source_dir: ${{ github.workspace }}/build
           file_glob: ${{ github.test_badges_path }}

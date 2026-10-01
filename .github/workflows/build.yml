@@ -33,6 +33,10 @@ on:
         required: false
         type: string
         default: 'OFF'
+      package:
+        required: false
+        type: boolean
+        default: true
       cmake_args:
         required: false
         type: string
@@ -76,7 +80,7 @@ jobs:
           echo "dir=${{ inputs.src_dir || github.workspace }}" >> $GITHUB_OUTPUT
 
       - name: Build project (Ubuntu)
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
         with:
           platform: 'posix'
           build_type: ${{ inputs.build_type }}
@@ -87,6 +91,7 @@ jobs:
           build_tests: ${{ inputs.build_tests }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
+          package: ${{ inputs.package }}
 
       - name: Upload artifacts (Ubuntu)
         uses: actions/upload-artifact@v4
@@ -118,7 +123,7 @@ jobs:
           echo "dir=$dir" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Build project (Windows)
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
         with:
           platform: 'windows'
           build_type: ${{ inputs.build_type }}
@@ -129,6 +134,7 @@ jobs:
           build_tests: ${{ inputs.build_tests }}
           codecoverage: ${{ inputs.codecoverage }}
           cmake_args: ${{ inputs.cmake_args }}
+          package: ${{ inputs.package }}
 
       - name: Upload artifacts (Windows)
         uses: actions/upload-artifact@v4
