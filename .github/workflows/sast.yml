@@ -80,7 +80,7 @@ jobs:
           version: 1.0
 
       - name: Configure project build
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
         with:
           platform: posix
           build_type: ${{ env.BUILD_TYPE }}
@@ -92,7 +92,7 @@ jobs:
           install_qt: 'ON'
 
       - name: Run cppcheck
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-cppcheck@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-cppcheck@main
         with:
           compile_commands: ${{ github.workspace }}/build/compile_commands.json
           report_path: ${{ github.workspace }}/sca_cppcheck.txt
@@ -138,7 +138,7 @@ jobs:
           tar -xvzf ~/download/coverity_tool.tgz
 
       - name: Configure project build
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/build_helper@main
         with:
           platform: posix
           build_type: ${{ env.BUILD_TYPE }}
@@ -151,7 +151,7 @@ jobs:
           only_configure: true
 
       - name: Coverity Full Scan
-        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-coverity-scan@feature/hsmcpp-ci-integration
+        uses: igor-krechetov/hsm-github-workflows/.github/actions/run-coverity-scan@main
         with:
           coverity_name: ${{ env.COVERITY_NAME }}
           coverity_project_description: ${{ env.COVERITY_PROJECT_DESCRIPTION }}
