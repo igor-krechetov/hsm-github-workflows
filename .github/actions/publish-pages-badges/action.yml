@@ -36,6 +36,11 @@ runs:
       run: |
         set -euo pipefail
 
+        if [ -z "${INPUT_FILE_GLOB}" ]; then
+          echo "file_glob input is empty"
+          exit 1
+        fi
+
         rm -rf "${INPUT_PAGES_DIR}"
         mkdir -p "${INPUT_PAGES_DIR}/${INPUT_BADGES_SUBDIR}"
 
@@ -47,6 +52,13 @@ runs:
           echo "No badge files matched: ${INPUT_SOURCE_DIR}/${INPUT_FILE_GLOB}"
           exit 1
         fi
+
+        for f in "${files[@]}"; do
+          if [ -d "$f" ]; then
+            echo "Matched path is a directory, expected files: $f"
+            exit 1
+          fi
+        done
 
         cp "${files[@]}" "${INPUT_PAGES_DIR}/${INPUT_BADGES_SUBDIR}/"
 

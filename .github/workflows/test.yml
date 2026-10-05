@@ -148,7 +148,7 @@ jobs:
         uses: igor-krechetov/hsm-github-workflows/.github/actions/publish-pages-badges@main
         with:
           source_dir: ${{ github.workspace }}/build
-          file_glob: ${{ github.test_badges_path }}
+          file_glob: ${{ inputs.test_badges_path }}
           pages_dir: pages
           badges_subdir: badges
           index_title: "hsmcpp badges"
