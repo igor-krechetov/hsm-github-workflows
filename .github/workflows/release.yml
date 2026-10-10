@@ -14,9 +14,29 @@ on:
         required: true
         type: string
       release_description:
-        description: "Release notes / description (multiline allowed)"
+        description: >
+          Free-form release notes text supplied by the caller (multiline
+          allowed). COMPOSITION: when generate_changelog is true (and a
+          changelog file exists) this text is appended BELOW the generated
+          changelog block as a footer. When generate_changelog is false the
+          release body is exactly this text (today's behavior, unchanged).
         required: false
         type: string
+      generate_changelog:
+        description: >
+          When true, the workflow discovers the previous release tag and slices
+          the changelog file to build the release body (a "Release <tag_version>"
+          header, then the changelog block, then release_description as a footer
+          when provided). When false, the release body is release_description
+          verbatim (backward compatible).
+        required: false
+        type: boolean
+        default: true
+      changelog_file:
+        description: "Path to the changelog file in the checked-out caller repo."
+        required: false
+        type: string
+        default: CHANGELOG.md
       repo_dir:
         required: false
         type: string
@@ -30,8 +50,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      # Checkout the repo (needed if scripts rely on repo content)
+      # Checkout the caller repo. Full history + tags are required so that
+      # `git describe` can resolve the previous release tag for changelog
+      # generation. (The artifact-download step below does not depend on repo
+      # contents, so the deeper fetch does not affect it.)
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Checkout this workflow repo separately to get the changelog extraction
+      # script (the primary checkout above holds the caller's repo contents).
+      - name: Checkout release workflow scripts
+        if: ${{ inputs.generate_changelog }}
+        uses: actions/checkout@v6
+        with:
+          repository: igor-krechetov/hsm-github-workflows
+          path: .release-workflow
+          fetch-depth: 1
 
       # Determine release tag
       - name: Determine release tag
@@ -44,6 +80,63 @@ jobs:
             TAG="${{ inputs.tag_version }}"
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      # Compose the release body.
+      #
+      # COMPOSITION RULE:
+      #   - generate_changelog == false  -> body is release_description verbatim.
+      #   - generate_changelog == true   -> body is:
+      #         Release <tag_version>
+      #         <changelog block>            (only when changelog_file exists)
+      #         <release_description>        (footer, only when provided)
+      #
+      # A fixed "Release <tag>" header is used (matches the previous hsm-ide
+      # behavior). If changelog_file is missing, changelog generation is skipped
+      # gracefully and the body is the header plus release_description.
+      - name: Compose release body
+        id: body
+        shell: bash
+        env:
+          TAG_NAME: ${{ steps.tag.outputs.tag }}
+          GENERATE_CHANGELOG: ${{ inputs.generate_changelog }}
+          CHANGELOG_FILE: ${{ inputs.changelog_file }}
+          RELEASE_DESCRIPTION: ${{ inputs.release_description }}
+        run: |
+          set -euo pipefail
+
+          {
+            echo "body<<RELEASE_NOTES_EOF"
+
+            if [ "${GENERATE_CHANGELOG}" != "true" ]; then
+              # Backward-compatible path: body is release_description verbatim.
+              printf '%s\n' "${RELEASE_DESCRIPTION}"
+            else
+              echo "Release ${TAG_NAME}"
+              echo ""
+
+              if [ -f "${CHANGELOG_FILE}" ]; then
+                # The current tag was already pushed, so the previous released
+                # version is the most recent tag reachable before it. Fall back
+                # to an empty previous version (first release) when none exists;
+                # the extraction script then emits only the current section.
+                PREVIOUS_VERSION="$(git describe --tags --abbrev=0 "${TAG_NAME}^" 2>/dev/null || true)"
+
+                CHANGELOG="$(.release-workflow/scripts/extract_changelog.sh "${CHANGELOG_FILE}" "${TAG_NAME}" "${PREVIOUS_VERSION}")"
+
+                printf '%s\n' "${CHANGELOG}"
+              else
+                echo "::warning::changelog file '${CHANGELOG_FILE}' not found; skipping changelog generation"
+              fi
+
+              # Append caller-supplied text as a footer when provided.
+              if [ -n "${RELEASE_DESCRIPTION}" ]; then
+                echo ""
+                printf '%s\n' "${RELEASE_DESCRIPTION}"
+              fi
+            fi
+
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       # Download artifacts listed in inputs.builds into a known folder
       - name: Download and collect install artifacts only
@@ -58,6 +151,10 @@ jobs:
 
           for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
             ARTIFACT=$(echo "$ARTIFACT" | xargs) # trim whitespace
+
+            if [ -z "$ARTIFACT" ]; then
+              continue
+            fi
 
             echo "Downloading artifact: $ARTIFACT"
             gh run download --name "$ARTIFACT" --dir "artifacts/$ARTIFACT"
@@ -85,37 +182,8 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: ${{ steps.tag.outputs.tag }}
-          body: ${{ inputs.release_description }}
+          body: ${{ steps.body.outputs.body }}
           files: |
             release_files/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # # Create GitHub release
-      # - name: Create release
-      #   id: create_release
-      #   uses: softprops/action-gh-release@v3
-      #   with:
-      #     tag_name: ${{ steps.tag.outputs.tag }}
-      #     name: ${{ steps.tag.outputs.tag }}
-      #     body: ${{ inputs.release_description }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # # Upload all artifacts from the builds list
-      # - name: Upload artifacts
-      #   run: |
-      #     IFS=',' read -ra ARTIFACT_NAMES <<< "${{ inputs.builds }}"
-      #     for ARTIFACT in "${ARTIFACT_NAMES[@]}"; do
-      #       echo "Downloading artifact: $ARTIFACT"
-      #       # Download artifact from the same workflow run
-      #       gh run download --name "$ARTIFACT" --dir ./tmp
-
-      #       # Assuming each artifact contains a single archive file
-      #       FILE=$(ls ./tmp)
-      #       echo "Uploading $FILE to release ${{ steps.tag.outputs.tag }}"
-      #       gh release upload "${{ steps.tag.outputs.tag }}" ./tmp/"$FILE" --clobber --repo ${{ github.repository }}
-      #       rm -rf ./tmp
-      #     done
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
