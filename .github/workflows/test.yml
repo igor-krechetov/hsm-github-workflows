@@ -52,10 +52,10 @@ jobs:
     # 'B33*'). Keeping both jobs on the same image keeps the gcov format aligned.
     runs-on: ubuntu-22.04
 
-    # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
-    permissions:
-      pages: write      # to deploy to Pages
-      id-token: write   # to verify the deployment originates from an appropriate source
+    # This job only PRODUCES a Pages contribution artifact (test badges); it no
+    # longer deploys to Pages. The dedicated deploy-pages workflow merges every
+    # `pages-*` contribution and performs the single Pages deployment, so no
+    # pages/id-token permissions are needed here.
 
     steps:
       # Checkout artifacts
@@ -143,17 +143,11 @@ jobs:
           path-to-lcov: ${{inputs.artifacts_dir}}/coverage.info
 
 
-      - name: Publish badge artifact for Pages
+      - name: Prepare badge contribution for Pages
         if: ${{ inputs.upload_test_badges == 'ON' && github.ref_name == 'main' }}
         uses: igor-krechetov/hsm-github-workflows/.github/actions/publish-pages-badges@main
         with:
           source_dir: ${{ github.workspace }}/build
           file_glob: ${{ inputs.test_badges_path }}
-          pages_dir: pages
           badges_subdir: badges
-          index_title: "hsmcpp badges"
-
-      - name: Deploy badges to GitHub Pages
-        if: ${{ inputs.upload_test_badges == 'ON' && github.ref_name == 'main' }}
-        id: deployment
-        uses: actions/deploy-pages@v4
+          artifact_name: pages-badges

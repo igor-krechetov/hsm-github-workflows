@@ -1,0 +1,108 @@
+name: "Deploy GitHub Pages (Reusable)"
+
+# Single owner of the GitHub Pages deployment. Downloads every `pages-*`
+# contribution artifact uploaded by earlier jobs (badges, requirements,
+# coverage, ...), merges them into one site tree, generates a root index and
+# performs the one and only Pages deployment.
+#
+# GitHub Pages has no additive deploy: each deployment REPLACES the whole site.
+# Routing every contribution through this one job is what prevents producers
+# from clobbering each other.
+#
+# Each contribution artifact MUST already lay its files out at their final site
+# path (e.g. badges/..., requirements/..., coverage/...); this job only unpacks
+# and merges, so no per-source path logic lives here.
+
+on:
+  workflow_call:
+    inputs:
+      artifact_pattern:
+        description: "Glob for the contribution artifacts to merge into the site."
+        required: false
+        type: string
+        default: "pages-*"
+      site_title:
+        description: "Title for the generated root index.html."
+        required: false
+        type: string
+        default: "Project documentation"
+
+jobs:
+  deploy:
+    name: "Deploy to GitHub Pages"
+    runs-on: ubuntu-22.04
+
+    permissions:
+      pages: write      # to deploy to Pages
+      id-token: write   # to verify the deployment originates from an appropriate source
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Download all Pages contributions
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ inputs.artifact_pattern }}
+          path: contributions
+
+      - name: Merge contributions into site
+        id: assemble
+        shell: bash
+        env:
+          SITE_TITLE: ${{ inputs.site_title }}
+        run: |
+          set -euo pipefail
+          SITE=site
+          rm -rf "$SITE"
+          mkdir -p "$SITE"
+
+          # Each downloaded artifact lands in contributions/<artifact-name>/.
+          # Copy their contents (already laid out at final site paths) into the
+          # merged site root.
+          shopt -s nullglob
+          found=0
+          for dir in contributions/*/; do
+            echo "Merging contribution: $dir"
+            cp -a "$dir". "$SITE"/
+            found=1
+          done
+          shopt -u nullglob
+
+          if [ "$found" -eq 0 ]; then
+            echo "No Pages contributions found; nothing to deploy."
+            echo "has_content=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          touch "$SITE/.nojekyll"
+
+          # Root index linking to whichever sections are present.
+          {
+            echo '<!doctype html>'
+            echo '<html lang="en"><head><meta charset="utf-8">'
+            echo '<meta name="viewport" content="width=device-width, initial-scale=1">'
+            echo "<title>${SITE_TITLE}</title>"
+            echo '<style>body{font-family:system-ui,-apple-system,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;line-height:1.6}a{color:#4f9cf9}li{margin:.4rem 0}</style>'
+            echo "</head><body><h1>${SITE_TITLE}</h1><ul>"
+            [ -d "$SITE/requirements" ] && echo '<li><a href="./requirements/">Requirements Specification</a></li>'
+            [ -d "$SITE/coverage" ]     && echo '<li><a href="./coverage/">Requirements Coverage Report</a></li>'
+            [ -d "$SITE/badges" ]       && echo '<li><a href="./badges/">Build &amp; test badges</a></li>'
+            echo '</ul></body></html>'
+          } > "$SITE/index.html"
+
+          echo "Merged site tree:"
+          find "$SITE" -type f | sort
+          echo "has_content=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Pages artifact
+        if: ${{ steps.assemble.outputs.has_content == 'true' }}
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        if: ${{ steps.assemble.outputs.has_content == 'true' }}
+        id: deployment
+        uses: actions/deploy-pages@v4

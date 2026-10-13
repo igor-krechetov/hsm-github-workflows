@@ -1,0 +1,217 @@
+name: "Requirements Documentation (Reusable)"
+
+# Validate requirements, render the requirements documentation and (optionally)
+# the coverage report, then upload them as a PARTIAL GitHub Pages contribution
+# artifact (`pages-requirements`). This workflow does NOT deploy to Pages; the
+# dedicated deploy-pages workflow merges every `pages-*` contribution and
+# performs the single deployment.
+#
+# This workflow is PROJECT-AGNOSTIC: it does not know how a given repository
+# builds its requirements docs. The repository drives everything through its own
+# `just` recipes (overridable via inputs) and declares its own tooling via a
+# `requirements.txt` and the `apt_packages` input. A repository that wants to use
+# this workflow is expected to provide those recipes.
+#
+# Expected to run AFTER the test workflow: it downloads the test artifact so a
+# repo's coverage recipe can reuse already-built/executed test evidence if it
+# wants to.
+
+on:
+  workflow_call:
+    inputs:
+      test_artifact_name:
+        description: "Name of the test artifact produced by test.yml (contains the build + test results)."
+        required: false
+        type: string
+        default: "test-artifacts-ubuntu"
+      build_dir:
+        description: "Directory where the test artifact is downloaded (the build dir the just recipes expect)."
+        required: false
+        type: string
+        default: "build"
+      generate_coverage:
+        description: "Also generate the coverage report via the coverage recipe."
+        required: false
+        type: string
+        default: "ON"
+      requirements_recipe:
+        description: "just recipe that renders the requirements documentation HTML."
+        required: false
+        type: string
+        default: "req_build full"
+      coverage_recipe:
+        description: "just recipe that renders the coverage report HTML."
+        required: false
+        type: string
+        default: "req_coverage"
+      validate_recipe:
+        description: "just recipe that validates the requirements (run first)."
+        required: false
+        type: string
+        default: "req_validate"
+      requirements_html:
+        description: "Path (relative to the repo root) of the rendered requirements HTML the recipe produces."
+        required: false
+        type: string
+        default: "build/requirements/hsmcpp_requirements.html"
+      coverage_html:
+        description: "Path (relative to the repo root) of the rendered coverage HTML the recipe produces."
+        required: false
+        type: string
+        default: "build/requirements/hsmcpp_coverage.html"
+      apt_packages:
+        description: "Space-separated apt packages the requirements tooling needs (e.g. doxygen)."
+        required: false
+        type: string
+        default: "doxygen graphviz"
+      install_qt:
+        description: >
+          Install Qt. Required when the coverage recipe RUNS the test suite and
+          the test binaries link against Qt (e.g. hsmcpp's `req_coverage` ->
+          `test_trace` runs the Qt dispatcher tests). Only consulted when
+          generate_coverage is ON.
+        required: false
+        type: string
+        default: "OFF"
+      install_glibmm:
+        description: >
+          Install glibmm. Required when the coverage recipe runs test binaries
+          that link against glibmm. Only consulted when generate_coverage is ON.
+        required: false
+        type: string
+        default: "OFF"
+
+jobs:
+  requirements:
+    name: "Requirements Documentation"
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: 'recursive'
+
+      - name: Download test artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.test_artifact_name }}
+          path: ${{ inputs.build_dir }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
+      - name: Install apt packages
+        if: ${{ inputs.apt_packages != '' }}
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        with:
+          packages: ${{ inputs.apt_packages }}
+          version: 1.0
+
+      # Register Graphviz output plugins. When graphviz is restored from the apt
+      # cache (awalsh128 action) its post-install hook that writes the plugin
+      # config is skipped, so `dot` reports `Format: "svg"/"png" not recognized`
+      # and every renderer fails - which breaks lobster-html-report's policy
+      # diagram (dot -Tsvg) and floods doxygen with dot errors. `dot -c`
+      # regenerates the plugin config. Harmless if graphviz isn't installed.
+      - name: Register Graphviz plugins
+        if: ${{ contains(inputs.apt_packages, 'graphviz') }}
+        shell: bash
+        run: sudo dot -c && echo 'digraph{}' | dot -Tsvg >/dev/null && echo "graphviz plugins registered"
+
+      # Qt / glibmm are only needed when the coverage recipe RUNS the test suite
+      # (its binaries link against these libs). Gated on generate_coverage so the
+      # requirements-only path installs neither. Mirrors test.yml.
+      - name: Install Qt (Ubuntu)
+        if: ${{ inputs.generate_coverage == 'ON' && inputs.install_qt == 'ON' }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.*'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'linux_gcc_64'
+          modules: ''
+          cache: 'true'
+          cache-key-prefix: 'install-qt-action-linux'
+          set-env: 'true'
+          # Do NOT let the Qt action swap the active Python (it defaults to
+          # setting up its own >=3.14). The requirements tooling is pip-installed
+          # into the Python selected by the "Set up Python" step above, and the
+          # just recipes run `python3` -> that same interpreter. If Qt switched
+          # the interpreter, `import lobster` would fail (tooling installed into
+          # the other Python).
+          setup-python: false
+
+      - name: Install glibmm (Ubuntu)
+        if: ${{ inputs.generate_coverage == 'ON' && inputs.install_glibmm == 'ON' }}
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.0
+        with:
+          packages: libglibmm-2.4-dev
+          version: 1.0
+
+      # Install the Python tooling LAST, so it targets whatever interpreter is
+      # active after the preceding actions (guards against any action swapping
+      # the active Python). The just recipes call `python3` -> this interpreter.
+      - name: Install Python requirements tooling
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python3 -m pip install -r requirements.txt
+          else
+            echo "No requirements.txt found; skipping Python tooling install."
+          fi
+          # Fail fast with a clear message if the tooling isn't importable by the
+          # interpreter the recipes will actually use.
+          python3 -c "import trlc, lobster" \
+            || { echo "requirements tooling not importable by active python3" >&2; exit 1; }
+
+      - name: Validate requirements
+        if: ${{ inputs.validate_recipe != '' }}
+        shell: bash
+        run: just ${{ inputs.validate_recipe }}
+
+      - name: Render requirements documentation
+        shell: bash
+        run: just ${{ inputs.requirements_recipe }}
+
+      - name: Render coverage report
+        if: ${{ inputs.generate_coverage == 'ON' && inputs.coverage_recipe != '' }}
+        shell: bash
+        run: just ${{ inputs.coverage_recipe }}
+
+      - name: Assemble Pages contribution
+        shell: bash
+        env:
+          GENERATE_COVERAGE: ${{ inputs.generate_coverage }}
+          REQUIREMENTS_HTML: ${{ inputs.requirements_html }}
+          COVERAGE_HTML: ${{ inputs.coverage_html }}
+        run: |
+          set -euo pipefail
+          CONTRIB=pages-contribution
+          mkdir -p "$CONTRIB/requirements"
+          if [ ! -f "$REQUIREMENTS_HTML" ]; then
+            echo "Requirements HTML not found at: $REQUIREMENTS_HTML" >&2
+            exit 1
+          fi
+          cp "$REQUIREMENTS_HTML" "$CONTRIB/requirements/index.html"
+          if [ "${GENERATE_COVERAGE}" = "ON" ] && [ -f "$COVERAGE_HTML" ]; then
+            mkdir -p "$CONTRIB/coverage"
+            cp "$COVERAGE_HTML" "$CONTRIB/coverage/index.html"
+          fi
+          echo "Assembled requirements contribution:"
+          find "$CONTRIB" -type f | sort
+
+      - name: Upload Pages contribution artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-requirements
+          path: pages-contribution
+          if-no-files-found: error
+          retention-days: 1

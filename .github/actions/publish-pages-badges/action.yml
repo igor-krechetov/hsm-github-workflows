@@ -1,5 +1,12 @@
-name: "Publish Pages badges artifact"
-description: "Collect generated badge files into a GitHub Pages artifact"
+name: "Prepare Pages badges contribution"
+description: >
+  Collect generated badge files into a PARTIAL GitHub Pages contribution and
+  upload it as a plain artifact. This action does NOT deploy to Pages; a single
+  deploy-pages workflow downloads every `pages-*` contribution artifact, merges
+  them into one site and performs the one and only Pages deployment. Keeping
+  assembly and deployment separate lets several producers (badges, requirements,
+  coverage, ...) contribute to the same site without racing each other's
+  deployments.
 
 inputs:
   source_dir:
@@ -10,29 +17,30 @@ inputs:
     required: true
     default: "tests_result_*"
   pages_dir:
-    description: "Temporary Pages site directory to assemble"
+    description: "Temporary directory to assemble this contribution in"
     required: false
-    default: "pages"
+    default: "pages-contribution"
   badges_subdir:
     description: "Subdirectory under the Pages root where badges will be stored"
     required: false
     default: "badges"
-  index_title:
-    description: "Title for generated index.html"
+  artifact_name:
+    description: >
+      Name of the uploaded contribution artifact. MUST match the `pages-*`
+      pattern the deploy-pages workflow globs for.
     required: false
-    default: "Badges"
+    default: "pages-badges"
 
 runs:
   using: "composite"
   steps:
-    - name: Assemble Pages content
+    - name: Assemble Pages contribution
       shell: bash
       env:
         INPUT_SOURCE_DIR: ${{ inputs.source_dir }}
         INPUT_FILE_GLOB: ${{ inputs.file_glob }}
         INPUT_PAGES_DIR: ${{ inputs.pages_dir }}
         INPUT_BADGES_SUBDIR: ${{ inputs.badges_subdir }}
-        INPUT_INDEX_TITLE: ${{ inputs.index_title }}
       run: |
         set -euo pipefail
 
@@ -62,24 +70,13 @@ runs:
 
         cp "${files[@]}" "${INPUT_PAGES_DIR}/${INPUT_BADGES_SUBDIR}/"
 
-        cat > "${INPUT_PAGES_DIR}/index.html" <<EOF
-        <!doctype html>
-        <html lang="en">
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>${INPUT_INDEX_TITLE}</title>
-          </head>
-          <body>
-            <h1>${INPUT_INDEX_TITLE}</h1>
-            <p>Static badge host.</p>
-          </body>
-        </html>
-        EOF
+        echo "Assembled badge contribution:"
+        find "${INPUT_PAGES_DIR}" -type f | sort
 
-        touch "${INPUT_PAGES_DIR}/.nojekyll"
-
-    - name: Upload Pages artifact
-      uses: actions/upload-pages-artifact@v3
+    - name: Upload Pages contribution artifact
+      uses: actions/upload-artifact@v4
       with:
+        name: ${{ inputs.artifact_name }}
         path: ${{ inputs.pages_dir }}
+        if-no-files-found: error
+        retention-days: 1
