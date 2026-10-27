@@ -17,5 +17,5 @@ jobs:
       - uses: igor-krechetov/hsm-github-workflows/.github/actions/get-commit-version@main
         id: get_version
         with:
-          repo_dir: ${{ env.GITHUB_WORKSPACE }}
+          repo_dir: ${{ github.workspace }}
           commit_sha: ${{ github.event.workflow_run.head_sha }}
