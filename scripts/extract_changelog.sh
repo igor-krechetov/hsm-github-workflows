@@ -2,27 +2,28 @@
 #
 # Extract CHANGELOG sections for a release's notes.
 #
-# Prints every CHANGELOG version section strictly newer than the previous
-# released version (exclusive) up to and including the current version
-# (inclusive). CHANGELOG sections are ordered newest-first, so the output is
-# the contiguous block of sections between the current version header and the
-# previous version header.
+# Prints the current version's section only: everything from the current
+# version header (inclusive) up to the NEXT version header (exclusive).
+# CHANGELOG sections are ordered newest-first, so this is the contiguous block
+# belonging to the current version.
 #
 # Usage:
 #   extract_changelog.sh <changelog_file> <current_version> [previous_version]
 #
 # - <current_version>   version being released (e.g. "0.18.0"); a leading "v"
 #                        is tolerated and stripped.
-# - [previous_version]  last released version (e.g. "0.17.1"); a leading "v" is
-#                        tolerated and stripped. When omitted or empty (first
-#                        release / no previous tag), only the current version's
-#                        section is emitted.
+# - [previous_version]  OPTIONAL and no longer used for the stop decision. It
+#                        is accepted for backward-compatible call sites but the
+#                        section boundary is determined solely by the next
+#                        version header, so a leading "v" is still stripped for
+#                        compatibility. This avoids a prior failure mode where a
+#                        previous git tag with no matching changelog header
+#                        caused capture to run to end-of-file and dump the whole
+#                        changelog (git tags and changelog sections can drift).
 #
 # NOTE (fail-open behavior): if the current version header is never matched,
-# nothing is captured and the output is empty. If the previous version header
-# is never matched (e.g. it was removed from the changelog), capturing simply
-# continues to end-of-file — this fail-open-to-EOF behavior is intentional and
-# preserved from the original implementation.
+# nothing is captured and the output is empty. If the current version is the
+# newest/only section, capture naturally continues to end-of-file.
 #
 set -euo pipefail
 
@@ -43,12 +44,18 @@ awk -v current="$CURRENT_VERSION" -v previous="$PREVIOUS_VERSION" '
     sub(/^## \[/, "", ver)
     sub(/\].*$/, "", ver)
     if (ver == current) {
+      # Found the current version header: start capturing this section.
       capturing = 1
-    } else if (previous != "" && ver == previous) {
-      # Reached the previous released version header: stop before it.
-      capturing = 0
-    } else if (capturing && previous == "") {
-      # No previous version known: emit only the current section.
+    } else if (capturing) {
+      # Any OTHER version header reached while capturing marks the end of the
+      # current section. Stop here regardless of which version it is.
+      #
+      # This intentionally does NOT depend on the previous version header being
+      # present in the changelog. Git tags and changelog sections can drift out
+      # of sync (e.g. a tag 1.0.5 with no "## [1.0.5]" section), and keying the
+      # stop condition on the previous tag used to fall through to end-of-file,
+      # dumping the entire changelog. "Stop at the next header" is the correct,
+      # self-correcting definition of "this version section".
       capturing = 0
     }
   }
