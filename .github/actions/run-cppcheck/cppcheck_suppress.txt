@@ -4,3 +4,4 @@
 preprocessorErrorDirective:*
 missingIncludeSystem:*
 checkersReport
+unmatchedSuppression

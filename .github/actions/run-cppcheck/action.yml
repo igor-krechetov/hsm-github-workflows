@@ -68,6 +68,7 @@ runs:
 
         CPP_CHECK_ARGS=(
           --enable="${INPUT_ENABLE}"
+          --check-level=exhaustive
           --xml
           --suppressions-list="${ACTION_PATH}/cppcheck_suppress.txt"
           --project="${INPUT_COMPILE_COMMANDS}"
