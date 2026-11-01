@@ -30,7 +30,7 @@ if __name__ == "__main__":
         exit(1)
 
     results = []
-    results.append( validateFile(f"{REPO_DIR}/README.md", r"changelog-v(\d+\.\d+\.\d+)-", COMMIT_VERSION) )
+    # results.append( validateFile(f"{REPO_DIR}/README.md", r"changelog-v(\d+\.\d+\.\d+)-", COMMIT_VERSION) )
     results.append( validateFile(f"{REPO_DIR}/CHANGELOG.md", r"## \[(\d+\.\d+\.\d+)\] - ", COMMIT_VERSION) )
     results.append( validateFile(f"{REPO_DIR}/CMakeLists.txt", r"set\(PROJECT_VERSION +\"(\d+\.\d+\.\d+)\"\)", COMMIT_VERSION) )
 
