@@ -92,8 +92,8 @@ jobs:
 
       - name: Generate package for PlatformIO
         run: |
-          cmake -S ./main -B ./main/build -DHSMBUILD_TARGET=platformio -DHSMBUILD_PLATFORM=arduino
-          cmake --build ./main/build --target install
+          bash ./main/scripts/build/platformio/configure.sh "./main/build" Release "" "$(realpath ./main)" OFF
+          bash ./main/scripts/build/platformio/build.sh "./main/build" Release
 
       - name: Copy package files to target repository
         run: |
@@ -161,8 +161,8 @@ jobs:
 
       - name: Generate package for ArduinoIDE
         run: |
-          cmake -S ./main -B ./main/build -DHSMBUILD_TARGET=arduinoide -DHSMBUILD_PLATFORM=arduino
-          cmake --build ./main/build --target install
+          bash ./main/scripts/build/arduino/configure.sh "./main/build" Release "" "$(realpath ./main)" OFF
+          bash ./main/scripts/build/arduino/build.sh "./main/build" Release
           mv ./main/build/deploy/arduinoide "${{ env.library_dir }}"
 
       - name: Validate arduino library structure

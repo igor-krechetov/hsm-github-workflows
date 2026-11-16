@@ -155,8 +155,8 @@ jobs:
         run: pip3 install --user platformio
       - name: Generate package
         run: |
-          cmake -S ./ -B ./build -DHSMBUILD_TARGET=platformio -DHSMBUILD_PLATFORM=arduino
-          cmake --build ./build --target install
+          bash ./scripts/build/platformio/configure.sh "./build" Release "" "$(realpath ./)" OFF
+          bash ./scripts/build/platformio/build.sh "./build" Release
       - name: Copy package to examples folder
         run: |
           mkdir -p ./examples/09_arduino/01_blink/lib/hsmcpp
@@ -191,8 +191,8 @@ jobs:
           submodules: 'recursive'
       - name: Generate hsmcpp library package
         run: |
-          cmake -S ./ -B ./build -DHSMBUILD_TARGET=arduinoide -DHSMBUILD_PLATFORM=arduino
-          cmake --build ./build --target install
+          bash ./scripts/build/arduino/configure.sh "./build" Release "" "$(realpath ./)" OFF
+          bash ./scripts/build/arduino/build.sh "./build" Release
           cp -Rv ${{ env.library_dir }} ./build/deploy/hsmcpp
           cd ./build/deploy/
           zip -r ./hsmcpp.zip ./hsmcpp
